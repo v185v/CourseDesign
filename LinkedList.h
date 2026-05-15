@@ -21,7 +21,9 @@ public:
     void clear();
     Node* getHead() const { return head; }
     
-    // 可以在这里添加根据编号查找、删除等逻辑
+
+    bool searchById() (const std::string& targetId) const;
+    bool removeById(const std::string& targetId);
 };
 
 #endif
