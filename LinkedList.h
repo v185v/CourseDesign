@@ -2,6 +2,7 @@
 #define LINKEDLIST_H
 
 #include "Goods.h"
+#include <string>
 
 struct Node {
     Goods data;
@@ -22,7 +23,7 @@ public:
     Node* getHead() const { return head; }
     
 
-    bool searchById() (const std::string& targetId) const;
+    bool searchById(const std::string& targetId) const;
     bool removeById(const std::string& targetId);
 };
 
