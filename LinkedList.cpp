@@ -106,3 +106,28 @@ bool LinkedList::removeById(const std::string& targetId) {
     std::cout << "\n✅ 成功删除编号为 [" << targetId << "] 的货物！" << std::endl;
     return true;
 }
+
+void LinkedList::displayAll() const {
+    if (!head) {
+        std::cout << "当前仓库为空！" << std::endl;
+        return;
+    }
+    
+    std::cout << std::string(80, '-') << std::endl;
+    std::cout << std::left << std::setw(10) << "编号" 
+              << std::setw(15) << "名称" 
+              << std::setw(15) << "厂家" 
+              << std::setw(15) << "生产日期" 
+              << std::setw(10) << "单价" 
+              << std::setw(10) << "数量" 
+              << std::setw(15) << "入库时间" << std::endl;
+    std::cout << std::string(80, '-') << std::endl;
+    
+    Node* current = head;
+    while (current) {
+        // current->data.display() 这里会调用 Goods 类的 display() const 方法
+        current->data.display(); 
+        current = current->next;
+    }
+    std::cout << std::string(80, '-') << std::endl;
+}
