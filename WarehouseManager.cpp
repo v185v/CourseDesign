@@ -1,18 +1,91 @@
 #include "WarehouseManager.h"
 #include <iostream>
 #include <string>
+#include <fstream>  // 👇 必须引入：用于文件读写
+#include <sstream>  // 👇 必须引入：用于解析字符串
+#include <vector>
 
 using namespace std;
 
-WarehouseManager::WarehouseManager() {
+// --- 1. 构造函数与析构函数的修改 ---
+
+WarehouseManager::WarehouseManager() : dataFile("warehouse.csv") {
     cout << ">>> 正在初始化仓库系统..." << endl;
-    // 预留：将来在这里调用加载 CSV 文件的函数
+    loadFromFile(); // 🌟 系统启动时：自动从文件加载数据
 }
 
 WarehouseManager::~WarehouseManager() {
     cout << "\n>>> 正在安全退出系统..." << endl;
-    // 预留：将来在这里调用保存数据到 CSV 文件的函数
+    saveToFile();   // 🌟 系统退出时：自动保存数据到文件
 }
+
+// --- 2. 实现文件保存功能 (写) ---
+
+void WarehouseManager::saveToFile() const {
+    // 创建一个输出文件流，如果文件不存在会自动创建，如果存在会覆盖
+    ofstream file(dataFile); 
+    
+    if (!file.is_open()) {
+        cout << "❌ 保存失败：无法打开文件！" << endl;
+        return;
+    }
+
+    Node* current = inventory.getHead();
+    while (current != nullptr) {
+        // 调用我们早在 Goods 类里写好的 toCSV() 方法
+        file << current->data.toCSV() << "\n"; 
+        current = current->next;
+    }
+    
+    file.close(); // 养成好习惯，写完文件随手关门
+    cout << ">>> 数据已成功保存到 [" << dataFile << "]！" << endl;
+}
+
+// --- 3. 实现文件读取功能 (读) ---
+
+void WarehouseManager::loadFromFile() {
+    ifstream file(dataFile);
+    
+    if (!file.is_open()) {
+        cout << ">>> 未找到本地数据文件，系统将作为一个空仓库启动。" << endl;
+        return;
+    }
+
+    string line;
+    int count = 0; // 记录加载了多少条数据
+    
+    // 一行一行地读取文件，直到读完
+    while (getline(file, line)) {
+        if (line.empty()) continue; // 跳过空行
+
+        stringstream ss(line);
+        string id, name, mfg, pDateStr, priceStr, qtyStr, sDateStr;
+
+        // 🌟 核心技巧：用 getline 配合逗号 ',' 来切分字符串
+        getline(ss, id, ',');
+        getline(ss, name, ',');
+        getline(ss, mfg, ',');
+        getline(ss, pDateStr, ',');
+        getline(ss, priceStr, ',');
+        getline(ss, qtyStr, ',');
+        getline(ss, sDateStr, ',');
+
+        // 恢复数据类型：文本转为数字和 Date 对象
+        double price = stod(priceStr); // string to double
+        int qty = stoi(qtyStr);        // string to integer
+        Date pDate = Date::fromString(pDateStr);
+        Date sDate = Date::fromString(sDateStr);
+
+        // 组装成货物对象，重新添加回链表中
+        Goods g(id, name, mfg, pDate, price, qty, sDate);
+        inventory.add(g);
+        count++;
+    }
+
+    file.close();
+    cout << ">>> 成功加载 " << count << " 条历史货物数据！" << endl;
+}
+
 
 void WarehouseManager::showMenu() const {
     cout << "\n=========================================" << endl;
