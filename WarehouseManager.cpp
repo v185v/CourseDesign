@@ -94,6 +94,7 @@ void WarehouseManager::showMenu() const {
     cout << "  2. 出库/删除 (移除货物)" << endl;
     cout << "  3. 精确查询 (按编号查找)" << endl;
     cout << "  4. 盘点库存 (显示所有货物)" << endl;
+    cout << "  5. 货物排序 (按编号/单价/数量)" << endl;
     cout << "  0. 退出系统并保存" << endl;
     cout << "=========================================" << endl;
     cout << "请输入您的指令 (0-4): ";
@@ -118,6 +119,7 @@ void WarehouseManager::run() {
         case 2: removeGoodsUI(); break;
         case 3: queryGoodsUI(); break;
         case 4: displayAllUI(); break;
+        case 5: sortGoodsUI(); break;
         case 0: break; // 退出循环
         default: cout << "❌ 无效的指令，请重新输入！" << endl;
         }
@@ -198,6 +200,69 @@ void WarehouseManager::quickSort(const Goods** arr, int left, int right, int typ
 
     quickSort(arr, left, j, type, isAscending);
     quickSort(arr, i, right, type, isAscending);
+}
+
+void WarehouseManager::sortGoodsUI() const {
+    cout << "\n--- [货物数据排序 (临时视图)] ---" << endl;
+    cout << "  1. 按 编号 排序" << endl;
+    cout << "  2. 按 单价 排序" << endl;
+    cout << "  3. 按 数量 排序" << endl;
+    cout << "请选择排序字段 (1-3): ";
+    
+    int type;
+    cin >> type;
+
+    if (type >= 1 && type <= 3) {
+        // 👇 新增：询问升序还是降序
+        cout << "  1. 升序 (从小到大)" << endl;
+        cout << "  2. 降序 (从大到小)" << endl;
+        cout << "请选择排序方向 (1-2): ";
+        int orderChoice;
+        cin >> orderChoice;
+        
+        // 如果用户输入1，isAscending 为 true，否则为 false
+        bool isAscending = (orderChoice == 1); 
+
+        cout << ">>> 正在生成高速排序视图..." << endl;
+
+        // ... 获取链表大小，创建动态数组的代码保持不变 ...
+        int size = 0;
+        Node* current = inventory.getHead();
+        while (current != nullptr) {
+            size++;
+            current = current->next;
+        }
+
+        if (size == 0) {
+            cout << "❌ 仓库为空，无法排序！" << endl;
+            return;
+        }
+
+        const Goods** viewArray = new const Goods*[size];
+
+        current = inventory.getHead();
+        for (int i = 0; i < size; i++) {
+            viewArray[i] = &(current->data);
+            current = current->next;
+        }
+
+        // 👇 核心修改：调用快排时，多传一个 isAscending 参数
+        quickSort(viewArray, 0, size - 1, type, isAscending);
+
+        // ... 打印视图和清理内存的代码保持不变 ...
+        cout << "\n✅ 排序完成！(此为临时视图，原仓库数据顺序未改变)" << endl;
+        cout << string(80, '-') << endl;
+        // 打印表头...
+        for (int i = 0; i < size; i++) {
+            viewArray[i]->display();
+        }
+        cout << string(80, '-') << endl;
+
+        delete[] viewArray; 
+
+    } else {
+        cout << "❌ 选择无效，取消排序操作。" << endl;
+    }
 }
 
 void WarehouseManager::queryGoodsUI() {

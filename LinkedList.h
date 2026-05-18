@@ -21,7 +21,6 @@ public:
     void add(const Goods& g);
     void clear();
     Node* getHead() const { return head; }
-    
 
     bool searchById(const std::string& targetId) const;
     bool removeById(const std::string& targetId);
