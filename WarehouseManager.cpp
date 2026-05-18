@@ -110,11 +110,18 @@ void WarehouseManager::run() {
         showMenu();
         cin >> choice;
 
-        // ⚠️ 经典 C++ 避坑：清理输入缓冲区
-        // 当我们输入数字并按回车时，回车符 '\n' 会留在缓冲区里。
-        // 如果下面要用 getline 读取字符串，会直接把这个回车当成空字符串读入，导致跳过输入。
-        // cin.clear(); 
-        // cin.ignore(10000, '\n'); // 清除掉那个讨厌的回车符
+        // 新增防御机制：检查输入流是否崩溃
+        if (cin.fail()) {
+            // 清除 cin 的罢工错误状态
+            cin.clear(); 
+            
+            // 忽略（丢弃）缓冲区里的多余字符，直到遇到换行符 '\n'
+            // 10000 是一个足够大的数字，代表最多丢弃 10000 个字符
+            cin.ignore(10000, '\n'); 
+            
+            cout << "❌ 检测到非法输入（数字过大或包含字母），请重新输入有效选项！" << endl;
+            continue; // 直接跳过后面的 switch，回到 while 循环开头重新显示菜单
+        }
 
         switch (choice) {
         case 1: addGoodsUI(); break;
