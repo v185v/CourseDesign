@@ -1,8 +1,8 @@
 #include "WarehouseManager.h"
 #include <iostream>
 #include <string>
-#include <fstream>  // 👇 必须引入：用于文件读写
-#include <sstream>  // 👇 必须引入：用于解析字符串
+#include <fstream>  
+#include <sstream> 
 #include <vector>
 
 using namespace std;
@@ -32,12 +32,11 @@ void WarehouseManager::saveToFile() const {
 
     Node* current = inventory.getHead();
     while (current != nullptr) {
-        // 调用我们早在 Goods 类里写好的 toCSV() 方法
         file << current->data.toCSV() << "\n"; 
         current = current->next;
     }
     
-    file.close(); // 养成好习惯，写完文件随手关门
+    file.close();
     cout << ">>> 数据已成功保存到 [" << dataFile << "]！" << endl;
 }
 
@@ -160,8 +159,45 @@ void WarehouseManager::removeGoodsUI() {
     cout << "请输入要删除的货物编号: ";
     cin >> targetId;
 
-    // 调用我们刚才写的删除逻辑
     inventory.removeById(targetId);
+}
+
+// --- 排序辅助：升级版比较规则 ---
+bool WarehouseManager::compareGoods(const Goods* a, const Goods* b, int type, bool isAscending) {
+    if (type == 1) { // 按编号比较
+        return isAscending ? (a->getId() < b->getId()) : (a->getId() > b->getId());
+    } else if (type == 2) { // 按单价比较
+        return isAscending ? (a->getPrice() < b->getPrice()) : (a->getPrice() > b->getPrice());
+    } else if (type == 3) { // 按数量比较
+        return isAscending ? (a->getQuantity() < b->getQuantity()) : (a->getQuantity() > b->getQuantity());
+    }
+    return false;
+}
+
+// --- 排序辅助：升级版快速排序算法 ---
+void WarehouseManager::quickSort(const Goods** arr, int left, int right, int type, bool isAscending) {
+    if (left >= right) return;
+
+    const Goods* pivot = arr[left + (right - left) / 2];
+    int i = left;
+    int j = right;
+
+    while (i <= j) {
+        // 👇 这里把 isAscending 传给 compareGoods
+        while (compareGoods(arr[i], pivot, type, isAscending)) i++;
+        while (compareGoods(pivot, arr[j], type, isAscending)) j--;
+        
+        if (i <= j) {
+            const Goods* temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+            i++;
+            j--;
+        }
+    }
+
+    quickSort(arr, left, j, type, isAscending);
+    quickSort(arr, i, right, type, isAscending);
 }
 
 void WarehouseManager::queryGoodsUI() {
