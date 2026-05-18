@@ -4,6 +4,7 @@
 #include <fstream>  
 #include <sstream> 
 #include <vector>
+#include <iomanip>
 
 using namespace std;
 
@@ -95,9 +96,10 @@ void WarehouseManager::showMenu() const {
     cout << "  3. 精确查询 (按编号查找)" << endl;
     cout << "  4. 盘点库存 (显示所有货物)" << endl;
     cout << "  5. 货物排序 (按编号/单价/数量)" << endl;
+    cout << "  6. 缺货报警 (筛查库存不足货物)" << endl;
     cout << "  0. 退出系统并保存" << endl;
     cout << "=========================================" << endl;
-    cout << "请输入您的指令 (0-4): ";
+    cout << "请输入您的指令 (0-6): ";
 }
 
 void WarehouseManager::run() {
@@ -120,6 +122,7 @@ void WarehouseManager::run() {
         case 3: queryGoodsUI(); break;
         case 4: displayAllUI(); break;
         case 5: sortGoodsUI(); break;
+        case 6: checkLowStockUI(); break;
         case 0: break; // 退出循环
         default: cout << "❌ 无效的指令，请重新输入！" << endl;
         }
@@ -213,7 +216,6 @@ void WarehouseManager::sortGoodsUI() const {
     cin >> type;
 
     if (type >= 1 && type <= 3) {
-        // 👇 新增：询问升序还是降序
         cout << "  1. 升序 (从小到大)" << endl;
         cout << "  2. 降序 (从大到小)" << endl;
         cout << "请选择排序方向 (1-2): ";
@@ -265,13 +267,51 @@ void WarehouseManager::sortGoodsUI() const {
     }
 }
 
+void WarehouseManager::checkLowStockUI() const {
+    cout << "\n--- [缺货报警系统] ---" << endl;
+    cout << "请输入库存安全阈值 (低于该值的货物将被列出): ";
+    
+    int threshold;
+    cin >> threshold;
+
+    cout << ">>> 正在筛查库存低于 " << threshold << " 的货物..." << endl;
+
+    Node* current = inventory.getHead();
+    bool found = false; // 用于记录是否找到了缺货商品
+
+    cout << string(80, '-') << endl;
+    cout << left << setw(10) << "编号" 
+         << setw(15) << "名称" 
+         << setw(15) << "厂家" 
+         << setw(15) << "生产日期" 
+         << setw(10) << "单价" 
+         << setw(10) << "数量" 
+         << setw(15) << "入库时间" << endl;
+    cout << string(80, '-') << endl;
+
+    while (current != nullptr) {
+        // 如果当前货物的数量小于用户输入的阈值
+        if (current->data.getQuantity() < threshold) {
+            current->data.display(); // 打印这件货物
+            found = true;            // 标记为已找到
+        }
+        current = current->next;     // 巡视员走向下一节车厢
+    }
+
+    // 如果整个仓库都没有缺货商品，给出积极提示
+    if (!found) {
+        // 使用回车符覆盖刚才的表头内部，保持界面整洁
+        cout << "✅ 恭喜！当前没有库存低于 " << threshold << " 的货物，库存非常充足！" << endl;
+    }
+    cout << string(80, '-') << endl;
+}
+
 void WarehouseManager::queryGoodsUI() {
     string targetId;
     cout << "\n--- [精确查询] ---" << endl;
     cout << "请输入要查询的货物编号: ";
     cin >> targetId;
 
-    // 调用我们刚才写的查询逻辑
     inventory.searchById(targetId);
 }
 

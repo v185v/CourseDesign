@@ -10,6 +10,7 @@ private:
     void loadFromFile();
     void saveToFile() const;
     void sortGoodsUI() const;
+    void checkLowStockUI() const;
     static bool compareGoods(const Goods* a, const Goods* b, int type, bool isAscending);
     static void quickSort(const Goods** arr, int left, int right, int type, bool isAscending);
 
