@@ -30,9 +30,14 @@ std::string Goods::toCSV() const {
 }
 
 void Goods::display() const {
-    std::cout << std::left << std::setw(10) << id 
-              << std::setw(15) << name 
-              << std::setw(10) << price 
-              << std::setw(10) << quantity 
-              << std::setw(15) << productionDate.toString() << std::endl;
+    // 严格按照表头的顺序和宽度进行格式化输出
+    std::cout << std::left 
+              << std::setw(10) << id                         // 1. 编号
+              << std::setw(15) << name                       // 2. 名称
+              << std::setw(15) << manufacturer               // 3. 厂家 (新增)
+              << std::setw(15) << productionDate.toString()  // 4. 生产日期
+              << std::setw(10) << price                      // 5. 单价
+              << std::setw(10) << quantity                   // 6. 数量
+              << std::setw(15) << storageDate.toString()     // 7. 入库时间 (新增)
+              << std::endl;
 }
