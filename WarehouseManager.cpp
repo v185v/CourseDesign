@@ -120,7 +120,7 @@ void WarehouseManager::run() {
             cin.ignore(10000, '\n'); 
             
             cout << "❌ 检测到非法输入（数字过大或包含字母），请重新输入有效选项！" << endl;
-            continue; // 直接跳过后面的 switch，回到 while 循环开头重新显示菜单
+            continue;
         }
 
         switch (choice) {
@@ -136,7 +136,6 @@ void WarehouseManager::run() {
     }
 }
 
-// --- 下面是将用户输入转化为链表操作的具体实现 ---
 
 void WarehouseManager::addGoodsUI() {
     string id, name, mfg;
@@ -234,7 +233,6 @@ void WarehouseManager::sortGoodsUI() const {
 
         cout << ">>> 正在生成高速排序视图..." << endl;
 
-        // ... 获取链表大小，创建动态数组的代码保持不变 ...
         int size = 0;
         Node* current = inventory.getHead();
         while (current != nullptr) {
@@ -255,13 +253,10 @@ void WarehouseManager::sortGoodsUI() const {
             current = current->next;
         }
 
-        // 👇 核心修改：调用快排时，多传一个 isAscending 参数
         quickSort(viewArray, 0, size - 1, type, isAscending);
 
-        // ... 打印视图和清理内存的代码保持不变 ...
         cout << "\n✅ 排序完成！(此为临时视图，原仓库数据顺序未改变)" << endl;
         cout << string(80, '-') << endl;
-        // 打印表头...
         for (int i = 0; i < size; i++) {
             viewArray[i]->display();
         }
