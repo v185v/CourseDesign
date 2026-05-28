@@ -2,17 +2,25 @@
 #define WAREHOUSE_MANAGER_H
 
 #include "LinkedList.h"
+#include "ShortageRecord.h"
+#include "StockInRecord.h"
+#include "StockOutRecord.h"
 
 class WarehouseManager {
 private:
     LinkedList inventory;   //自定义链表，作为仓库的内存载体
     std::string dataFile; // 做文件读写时使用
+    std::string stockInFile;
+    std::string stockOutFile;
+    std::string shortageFile;
     void loadFromFile();
     void saveToFile() const;
     void sortGoodsUI() const;
-    void checkLowStockUI() const;
+    void checkLowStockUI();
     static bool compareGoods(const Goods* a, const Goods* b, int type, bool isAscending);
     static void quickSort(const Goods** arr, int left, int right, int type, bool isAscending);
+    std::string generateRecordId(const std::string& prefix) const;
+    void appendLineToFile(const std::string& fileName, const std::string& line) const;
 
 public:
     WarehouseManager();
@@ -30,7 +38,13 @@ private:
     void displayAllUI() const;
     void modifyGoodsUI();
     void stockOutUI();
-    void saveStockOutRecord(const std::string& goodsId, int quantity, const Date& outDate) const;
+    void shortageRegisterUI();
+    void displayStockInRecordsUI() const;
+    void displayStockOutRecordsUI() const;
+    void displayShortageRecordsUI() const;
+    void saveStockInRecord(const StockInRecord& record) const;
+    void saveStockOutRecord(const StockOutRecord& record) const;
+    void saveShortageRecord(const ShortageRecord& record) const;
 };
 
 #endif

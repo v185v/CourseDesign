@@ -14,10 +14,19 @@ Goods::Goods() : price(0), quantity(0) {}
 /// <param name="price"></param>
 /// <param name="qty"></param>
 /// <param name="sDate"></param>
-Goods::Goods(std::string id, std::string name, std::string mfg, 
-             Date pDate, double price, int qty, Date sDate)
-    : id(id), name(name), manufacturer(mfg), productionDate(pDate), 
-      price(price), quantity(qty), storageDate(sDate) {}
+Goods::Goods(std::string id, 
+             std::string name, std::string mfg, 
+             Date pDate, 
+             double price, 
+             int qty, 
+             Date sDate)
+    :   id(id), 
+        name(name), 
+        manufacturer(mfg), 
+        productionDate(pDate), 
+        price(price), 
+        quantity(qty), 
+        storageDate(sDate) {}
 
 /// <summary>
 /// 将 Goods 对象序列化为以逗号分隔的 CSV 字符串（字段顺序：id、name、manufacturer、productionDate、price、quantity、storageDate）。
@@ -34,10 +43,10 @@ void Goods::display() const {
     std::cout << std::left 
               << std::setw(10) << id                         // 1. 编号
               << std::setw(15) << name                       // 2. 名称
-              << std::setw(15) << manufacturer               // 3. 厂家 (新增)
+              << std::setw(15) << manufacturer               // 3. 厂家 
               << std::setw(15) << productionDate.toString()  // 4. 生产日期
               << std::setw(10) << price                      // 5. 单价
               << std::setw(10) << quantity                   // 6. 数量
-              << std::setw(15) << storageDate.toString()     // 7. 入库时间 (新增)
+              << std::setw(15) << storageDate.toString()     // 7. 入库时间 
               << std::endl;
 }

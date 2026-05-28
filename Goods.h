@@ -22,8 +22,11 @@ public:
     // Getters
     std::string getId() const { return id; }
     std::string getName() const { return name; }
+    std::string getManufacturer() const { return manufacturer; }
+    Date getProductionDate() const { return productionDate; }
     double getPrice() const { return price; }
     int getQuantity() const { return quantity; }
+    Date getStorageDate() const { return storageDate; }
 
     void setName(const std::string& value) { name = value; }
     void setManufacturer(const std::string& value) { manufacturer = value; }

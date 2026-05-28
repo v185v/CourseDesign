@@ -5,12 +5,18 @@
 #include <sstream> 
 #include <vector>
 #include <iomanip>
+#include <ctime>
+#include <exception>
 
 using namespace std;
 
 // --- 1. 构造函数与析构函数的修改 ---
 
-WarehouseManager::WarehouseManager() : dataFile("warehouse.csv") {
+WarehouseManager::WarehouseManager()
+    : dataFile("warehouse.csv"),
+      stockInFile("stock_in.csv"),
+      stockOutFile("stock_out.csv"),
+      shortageFile("shortage.csv") {
     cout << ">>> 正在初始化仓库系统..." << endl;
     loadFromFile(); // 🌟 系统启动时：自动从文件加载数据
 }
@@ -99,9 +105,13 @@ void WarehouseManager::showMenu() const {
     cout << "  6. 缺货报警 (筛查库存不足货物)" << endl;
     cout << "  7. 修改货物信息" << endl;
     cout << "  8. 出库登记" << endl;
+    cout << "  9. 缺库登记" << endl;
+    cout << "  10. 查看入库单记录" << endl;
+    cout << "  11. 查看出库单记录" << endl;
+    cout << "  12. 查看缺库登记记录" << endl;
     cout << "  0. 退出系统并保存" << endl;
     cout << "=========================================" << endl;
-    cout << "请输入您的指令 (0-8): ";
+    cout << "请输入您的指令 (0-12): ";
 }
 
 void WarehouseManager::run() {
@@ -112,13 +122,13 @@ void WarehouseManager::run() {
         showMenu();
         cin >> choice;
 
-        // 新增防御机制：检查输入流是否崩溃
+        // 检查输入流是否崩溃
         if (cin.fail()) {
-            // 清除 cin 的罢工错误状态
+            // 清除 cin 的错误状态
             cin.clear(); 
             
             // 忽略（丢弃）缓冲区里的多余字符，直到遇到换行符 '\n'
-            // 10000 是一个足够大的数字，代表最多丢弃 10000 个字符
+            // 最多丢弃 10000 个字符
             cin.ignore(10000, '\n'); 
             
             cout << "❌ 检测到非法输入（数字过大或包含字母），请重新输入有效选项！" << endl;
@@ -134,6 +144,10 @@ void WarehouseManager::run() {
         case 6: checkLowStockUI(); break;
         case 7: modifyGoodsUI(); break;
         case 8: stockOutUI(); break;
+        case 9: shortageRegisterUI(); break;
+        case 10: displayStockInRecordsUI(); break;
+        case 11: displayStockOutRecordsUI(); break;
+        case 12: displayShortageRecordsUI(); break;
         case 0: break;
         default: cout << "❌ 无效的指令，请重新输入！" << endl;
         }
@@ -142,10 +156,11 @@ void WarehouseManager::run() {
 
 
 void WarehouseManager::addGoodsUI() {
-    string id, name, mfg;
+    string id, name, mfg, operatorName, remark;
     double price;
     int qty;
     int y, m, d;
+    int sy, sm, sd;
 
     cout << "\n--- [入库登记] ---" << endl;
     cout << "请输入货物编号: "; cin >> id;
@@ -158,18 +173,46 @@ void WarehouseManager::addGoodsUI() {
     cin >> y >> m >> d;
     Date pDate(y, m, d);
 
-    // 假设入库时间就是今天 (为了简化，这里先固定一个时间，后续可改)
-    Date sDate(2024, 5, 20);
+    cout << "请输入入库日期 (年 月 日，用空格隔开): ";
+    cin >> sy >> sm >> sd;
+    Date sDate(sy, sm, sd);
 
-    // 组装成 Goods 对象，并交给链表
-    Goods newGoods(id, name, mfg, pDate, price, qty, sDate);
-    inventory.add(newGoods);
+    cout << "请输入经办人: "; cin >> operatorName;
+    cout << "请输入备注(无备注请输入 none): "; cin >> remark;
+
+    if (price < 0 || qty <= 0) {
+        cout << "单价不能为负，入库数量必须大于 0，入库失败。" << endl;
+        return;
+    }
+
+    Goods* existingGoods = inventory.findById(id);
+    if (existingGoods != nullptr) {
+        existingGoods->setName(name);
+        existingGoods->setManufacturer(mfg);
+        existingGoods->setProductionDate(pDate);
+        existingGoods->setPrice(price);
+        existingGoods->setQuantity(existingGoods->getQuantity() + qty);
+        existingGoods->setStorageDate(sDate);
+    } else {
+        Goods newGoods(id, name, mfg, pDate, price, qty, sDate);
+        inventory.add(newGoods);
+    }
+
+    StockInRecord record(generateRecordId("IN"),
+                         id,
+                         name,
+                         qty,
+                         price,
+                         sDate,
+                         operatorName,
+                         remark);
+    saveStockInRecord(record);
 
     cout << "✅ 入库成功！" << endl;
 }
 
 void WarehouseManager::stockOutUI() {
-    string targetId;
+    string targetId, receiver, operatorName, remark;
     int outQty;
     int y, m, d;
 
@@ -203,8 +246,21 @@ void WarehouseManager::stockOutUI() {
     cin >> y >> m >> d;
     Date outDate(y, m, d);
 
+    cout << "请输入领用人/客户: "; cin >> receiver;
+    cout << "请输入经办人: "; cin >> operatorName;
+    cout << "请输入备注(无备注请输入 none): "; cin >> remark;
+
     goods->setQuantity(goods->getQuantity() - outQty);
-    saveStockOutRecord(targetId, outQty, outDate);
+    StockOutRecord record(generateRecordId("OUT"),
+                          goods->getId(),
+                          goods->getName(),
+                          outQty,
+                          goods->getPrice(),
+                          outDate,
+                          receiver,
+                          operatorName,
+                          remark);
+    saveStockOutRecord(record);
 
     cout << "出库成功，当前剩余库存为 " << goods->getQuantity() << "。" << endl;
 }
@@ -239,7 +295,7 @@ void WarehouseManager::quickSort(const Goods** arr, int left, int right, int typ
     int j = right;
 
     while (i <= j) {
-        // 👇 这里把 isAscending 传给 compareGoods
+        //这里把 isAscending 传给 compareGoods
         while (compareGoods(arr[i], pivot, type, isAscending)) i++;
         while (compareGoods(pivot, arr[j], type, isAscending)) j--;
         
@@ -314,7 +370,7 @@ void WarehouseManager::sortGoodsUI() const {
     }
 }
 
-void WarehouseManager::checkLowStockUI() const {
+void WarehouseManager::checkLowStockUI() {
     cout << "\n--- [缺货报警系统] ---" << endl;
     cout << "请输入库存安全阈值 (低于该值的货物将被列出): ";
     
@@ -339,18 +395,25 @@ void WarehouseManager::checkLowStockUI() const {
     while (current != nullptr) {
         // 如果当前货物的数量小于用户输入的阈值
         if (current->data.getQuantity() < threshold) {
-            current->data.display(); // 打印这件货物
-            found = true;            // 标记为已找到
+            current->data.display();
+            found = true;          
         }
-        current = current->next;     // 巡视员走向下一节车厢
+        current = current->next; 
     }
 
-    // 如果整个仓库都没有缺货商品，给出积极提示
     if (!found) {
-        // 使用回车符覆盖刚才的表头内部，保持界面整洁
         cout << "✅ 恭喜！当前没有库存低于 " << threshold << " 的货物，库存非常充足！" << endl;
     }
     cout << string(80, '-') << endl;
+
+    if (found) {
+        char choice;
+        cout << "是否需要登记缺库记录？(y/n): ";
+        cin >> choice;
+        if (choice == 'y' || choice == 'Y') {
+            shortageRegisterUI();
+        }
+    }
 }
 
 void WarehouseManager::modifyGoodsUI() {
@@ -412,21 +475,182 @@ void WarehouseManager::displayAllUI() const {
     inventory.displayAll(); // 调用链表的遍历打印
 }
 
-void WarehouseManager::saveStockOutRecord(
-    const std::string& goodsId,
-    int quantity,
-    const Date& outDate
-) const {
-    ofstream file("stock_out.csv", ios::app);
+void WarehouseManager::shortageRegisterUI() {
+    string targetId, status, remark;
+    int requiredQty;
+    int y, m, d;
 
-    if (!file.is_open()) {
-        cout << "出库记录保存失败：无法打开 stock_out.csv" << endl;
+    cout << "\n--- [缺库登记] ---" << endl;
+    cout << "请输入缺库货物编号: ";
+    cin >> targetId;
+
+    Goods* goods = inventory.findById(targetId);
+    if (goods == nullptr) {
+        cout << "未找到编号为 [" << targetId << "] 的货物，缺库登记失败。" << endl;
         return;
     }
 
-    file << goodsId << ","
-         << quantity << ","
-         << outDate.toString() << "\n";
+    cout << "当前货物信息:" << endl;
+    goods->display();
 
-    file.close();
+    cout << "请输入需求数量或安全库存数量: ";
+    cin >> requiredQty;
+
+    if (requiredQty <= goods->getQuantity()) {
+        cout << "当前库存未低于需求数量，无需登记缺库。" << endl;
+        return;
+    }
+
+    cout << "请输入登记日期(年 月 日): ";
+    cin >> y >> m >> d;
+    cout << "请输入状态(如 未处理/已采购/已完成): ";
+    cin >> status;
+    cout << "请输入备注(无备注请输入 none): ";
+    cin >> remark;
+
+    ShortageRecord record(generateRecordId("SHORT"),
+                          goods->getId(),
+                          goods->getName(),
+                          goods->getQuantity(),
+                          requiredQty,
+                          requiredQty - goods->getQuantity(),
+                          Date(y, m, d),
+                          status,
+                          remark);
+    saveShortageRecord(record);
+
+    cout << "缺库登记成功。" << endl;
+}
+
+void WarehouseManager::displayStockInRecordsUI() const {
+    ifstream file(stockInFile);
+    if (!file.is_open()) {
+        cout << "暂无入库单记录。" << endl;
+        return;
+    }
+
+    cout << "\n--- [入库单记录] ---" << endl;
+    cout << left
+         << setw(30) << "入库单号"
+         << setw(12) << "货物编号"
+         << setw(16) << "货物名称"
+         << setw(10) << "数量"
+         << setw(10) << "单价"
+         << setw(14) << "入库日期"
+         << setw(14) << "经办人"
+         << setw(20) << "备注" << endl;
+    cout << string(126, '-') << endl;
+
+    string line;
+    while (getline(file, line)) {
+        if (!line.empty()) {
+            try {
+                StockInRecord::fromCSV(line).display();
+            } catch (const exception&) {
+                cout << "跳过无法解析的入库单记录: " << line << endl;
+            }
+        }
+    }
+}
+
+void WarehouseManager::displayStockOutRecordsUI() const {
+    ifstream file(stockOutFile);
+    if (!file.is_open()) {
+        cout << "暂无出库单记录。" << endl;
+        return;
+    }
+
+    cout << "\n--- [出库单记录] ---" << endl;
+    cout << left
+         << setw(30) << "出库单号"
+         << setw(12) << "货物编号"
+         << setw(16) << "货物名称"
+         << setw(10) << "数量"
+         << setw(10) << "单价"
+         << setw(14) << "出库日期"
+         << setw(14) << "领用人"
+         << setw(14) << "经办人"
+         << setw(20) << "备注" << endl;
+    cout << string(140, '-') << endl;
+
+    string line;
+    while (getline(file, line)) {
+        if (!line.empty()) {
+            try {
+                StockOutRecord::fromCSV(line).display();
+            } catch (const exception&) {
+                cout << "跳过无法解析的出库单记录: " << line << endl;
+            }
+        }
+    }
+}
+
+void WarehouseManager::displayShortageRecordsUI() const {
+    ifstream file(shortageFile);
+    if (!file.is_open()) {
+        cout << "暂无缺库登记记录。" << endl;
+        return;
+    }
+
+    cout << "\n--- [缺库登记记录] ---" << endl;
+    cout << left
+         << setw(30) << "登记编号"
+         << setw(12) << "货物编号"
+         << setw(16) << "货物名称"
+         << setw(10) << "当前库存"
+         << setw(10) << "需求数量"
+         << setw(10) << "缺少数量"
+         << setw(14) << "登记日期"
+         << setw(12) << "状态"
+         << setw(20) << "备注" << endl;
+    cout << string(134, '-') << endl;
+
+    string line;
+    while (getline(file, line)) {
+        if (!line.empty()) {
+            try {
+                ShortageRecord::fromCSV(line).display();
+            } catch (const exception&) {
+                cout << "跳过无法解析的缺库登记记录: " << line << endl;
+            }
+        }
+    }
+}
+
+void WarehouseManager::saveStockInRecord(const StockInRecord& record) const {
+    appendLineToFile(stockInFile, record.toCSV());
+}
+
+void WarehouseManager::saveStockOutRecord(const StockOutRecord& record) const {
+    appendLineToFile(stockOutFile, record.toCSV());
+}
+
+void WarehouseManager::saveShortageRecord(const ShortageRecord& record) const {
+    appendLineToFile(shortageFile, record.toCSV());
+}
+
+void WarehouseManager::appendLineToFile(const std::string& fileName, const std::string& line) const {
+    ofstream file(fileName, ios::app);
+
+    if (!file.is_open()) {
+        cout << "记录保存失败：无法打开 " << fileName << endl;
+        return;
+    }
+
+    file << line << "\n";
+}
+
+std::string WarehouseManager::generateRecordId(const std::string& prefix) const {
+    static int sequence = 0;
+    time_t now = time(nullptr);
+    tm* localTime = localtime(&now);
+    string dateText = "unknown-date";
+
+    if (localTime != nullptr) {
+        Date today(localTime->tm_year + 1900, localTime->tm_mon + 1, localTime->tm_mday);
+        dateText = today.toString();
+    }
+
+    sequence++;
+    return prefix + "-" + dateText + "-" + std::to_string(now) + "-" + std::to_string(sequence);
 }
