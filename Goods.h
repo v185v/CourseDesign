@@ -25,6 +25,13 @@ public:
     double getPrice() const { return price; }
     int getQuantity() const { return quantity; }
 
+    void setName(const std::string& value) { name = value; }
+    void setManufacturer(const std::string& value) { manufacturer = value; }
+    void setProductionDate(const Date& value) { productionDate = value; }
+    void setPrice(double value) { price = value; }
+    void setQuantity(int value) { quantity = value; }
+    void setStorageDate(const Date& value) { storageDate = value; }
+
     // 将对象转换为CSV格式的一行数据
     std::string toCSV() const;
     

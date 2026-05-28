@@ -28,6 +28,7 @@ private:
     void removeGoodsUI();
     void queryGoodsUI();
     void displayAllUI() const;
+    void modifyGoodsUI();
 };
 
 #endif

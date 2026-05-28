@@ -24,6 +24,7 @@ public:
 
     bool searchById(const std::string& targetId) const;
     bool removeById(const std::string& targetId);
+    Goods* findById(const std::string& targetId);
 
     void displayAll() const;
 };

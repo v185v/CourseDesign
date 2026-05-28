@@ -97,6 +97,7 @@ void WarehouseManager::showMenu() const {
     cout << "  4. 盘点库存 (显示所有货物)" << endl;
     cout << "  5. 货物排序 (按编号/单价/数量)" << endl;
     cout << "  6. 缺货报警 (筛查库存不足货物)" << endl;
+    cout << "  7. 修改货物信息" << endl;
     cout << "  0. 退出系统并保存" << endl;
     cout << "=========================================" << endl;
     cout << "请输入您的指令 (0-6): ";
@@ -130,7 +131,8 @@ void WarehouseManager::run() {
         case 4: displayAllUI(); break;
         case 5: sortGoodsUI(); break;
         case 6: checkLowStockUI(); break;
-        case 0: break; // 退出循环
+        case 7: modifyGoodsUI(); break;
+        case 0: break;
         default: cout << "❌ 无效的指令，请重新输入！" << endl;
         }
     }
@@ -255,7 +257,7 @@ void WarehouseManager::sortGoodsUI() const {
 
         quickSort(viewArray, 0, size - 1, type, isAscending);
 
-        cout << "\n✅ 排序完成！(此为临时视图，原仓库数据顺序未改变)" << endl;
+        cout << "\n✅ 排序完成" << endl;
         cout << string(80, '-') << endl;
         for (int i = 0; i < size; i++) {
             viewArray[i]->display();
@@ -306,6 +308,51 @@ void WarehouseManager::checkLowStockUI() const {
         cout << "✅ 恭喜！当前没有库存低于 " << threshold << " 的货物，库存非常充足！" << endl;
     }
     cout << string(80, '-') << endl;
+}
+
+void WarehouseManager::modifyGoodsUI() {
+    string targetId;
+    cout << "\n--- [修改货物信息] ---" << endl;
+    cout << "请输入要修改的货物编号: ";
+    cin >> targetId;
+
+    Goods* goods = inventory.findById(targetId);
+
+    if (goods == nullptr) {
+        cout << "未找到编号为 [" << targetId << "] 的货物，修改失败。" << endl;
+        return;
+    }
+
+    cout << "当前货物信息:" << endl;
+    goods->display();
+
+    string name, mfg;
+    double price;
+    int qty;
+    int py, pm, pd;
+    int sy, sm, sd;
+
+    cout << "请输入新的货物名称: ";
+    cin >> name;
+    cout << "请输入新的生产厂家: ";
+    cin >> mfg;
+    cout << "请输入新的生产日期(年 月 日): ";
+    cin >> py >> pm >> pd;
+    cout << "请输入新的单价: ";
+    cin >> price;
+    cout << "请输入新的数量: ";
+    cin >> qty;
+    cout << "请输入新的入库时间(年 月 日): ";
+    cin >> sy >> sm >> sd;
+
+    goods->setName(name);
+    goods->setManufacturer(mfg);
+    goods->setProductionDate(Date(py, pm, pd));
+    goods->setPrice(price);
+    goods->setQuantity(qty);
+    goods->setStorageDate(Date(sy, sm, sd));
+
+    cout << "修改成功。" << endl;
 }
 
 void WarehouseManager::queryGoodsUI() {
