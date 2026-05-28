@@ -92,15 +92,16 @@ void WarehouseManager::showMenu() const {
     cout << "          📦 智能仓库管理系统 📦          " << endl;
     cout << "=========================================" << endl;
     cout << "  1. 入库登记 (添加货物)" << endl;
-    cout << "  2. 出库/删除 (移除货物)" << endl;
+    cout << "  2. 删除货物档案" << endl;
     cout << "  3. 精确查询 (按编号查找)" << endl;
     cout << "  4. 盘点库存 (显示所有货物)" << endl;
     cout << "  5. 货物排序 (按编号/单价/数量)" << endl;
     cout << "  6. 缺货报警 (筛查库存不足货物)" << endl;
     cout << "  7. 修改货物信息" << endl;
+    cout << "  8. 出库登记" << endl;
     cout << "  0. 退出系统并保存" << endl;
     cout << "=========================================" << endl;
-    cout << "请输入您的指令 (0-6): ";
+    cout << "请输入您的指令 (0-8): ";
 }
 
 void WarehouseManager::run() {
@@ -132,6 +133,7 @@ void WarehouseManager::run() {
         case 5: sortGoodsUI(); break;
         case 6: checkLowStockUI(); break;
         case 7: modifyGoodsUI(); break;
+        case 8: stockOutUI(); break;
         case 0: break;
         default: cout << "❌ 无效的指令，请重新输入！" << endl;
         }
@@ -164,6 +166,47 @@ void WarehouseManager::addGoodsUI() {
     inventory.add(newGoods);
 
     cout << "✅ 入库成功！" << endl;
+}
+
+void WarehouseManager::stockOutUI() {
+    string targetId;
+    int outQty;
+    int y, m, d;
+
+    cout << "\n--- [出库登记] ---" << endl;
+    cout << "请输入出库货物编号: ";
+    cin >> targetId;
+
+    Goods* goods = inventory.findById(targetId);
+    if (goods == nullptr) {
+        cout << "未找到编号为 [" << targetId << "] 的货物，出库失败。" << endl;
+        return;
+    }
+
+    cout << "当前货物信息:" << endl;
+    goods->display();
+
+    cout << "请输入出库数量: ";
+    cin >> outQty;
+
+    if (outQty <= 0) {
+        cout << "出库数量必须大于 0。" << endl;
+        return;
+    }
+
+    if (outQty > goods->getQuantity()) {
+        cout << "库存不足，当前库存为 " << goods->getQuantity() << "，出库失败。" << endl;
+        return;
+    }
+
+    cout << "请输入出库日期(年 月 日): ";
+    cin >> y >> m >> d;
+    Date outDate(y, m, d);
+
+    goods->setQuantity(goods->getQuantity() - outQty);
+    saveStockOutRecord(targetId, outQty, outDate);
+
+    cout << "出库成功，当前剩余库存为 " << goods->getQuantity() << "。" << endl;
 }
 
 void WarehouseManager::removeGoodsUI() {
@@ -367,4 +410,23 @@ void WarehouseManager::queryGoodsUI() {
 void WarehouseManager::displayAllUI() const {
     cout << "\n--- [当前库存清单] ---" << endl;
     inventory.displayAll(); // 调用链表的遍历打印
+}
+
+void WarehouseManager::saveStockOutRecord(
+    const std::string& goodsId,
+    int quantity,
+    const Date& outDate
+) const {
+    ofstream file("stock_out.csv", ios::app);
+
+    if (!file.is_open()) {
+        cout << "出库记录保存失败：无法打开 stock_out.csv" << endl;
+        return;
+    }
+
+    file << goodsId << ","
+         << quantity << ","
+         << outDate.toString() << "\n";
+
+    file.close();
 }

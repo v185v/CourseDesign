@@ -29,6 +29,8 @@ private:
     void queryGoodsUI();
     void displayAllUI() const;
     void modifyGoodsUI();
+    void stockOutUI();
+    void saveStockOutRecord(const std::string& goodsId, int quantity, const Date& outDate) const;
 };
 
 #endif
