@@ -655,12 +655,12 @@ void WarehouseManager::displayStockInRecordsUI() const {
     cout << "\n--- [入库单记录] ---" << endl;
     cout << left
          << setw(30) << "入库单号"
-         << setw(12) << "货物编号"
-         << setw(16) << "货物名称"
-         << setw(10) << "数量"
+         << setw(20) << "货物编号"
+         << setw(20) << "货物名称"
+         << setw(14) << "数量"
          << setw(10) << "单价"
-         << setw(14) << "入库日期"
-         << setw(14) << "经办人"
+         << setw(16) << "入库日期"
+         << setw(18) << "经办人"
          << setw(20) << "备注" << endl;
     cout << string(126, '-') << endl;
 
@@ -686,13 +686,13 @@ void WarehouseManager::displayStockOutRecordsUI() const {
     cout << "\n--- [出库单记录] ---" << endl;
     cout << left
          << setw(30) << "出库单号"
-         << setw(12) << "货物编号"
-         << setw(16) << "货物名称"
-         << setw(10) << "数量"
+         << setw(20) << "货物编号"
+         << setw(20) << "货物名称"
+         << setw(14) << "数量"
          << setw(10) << "单价"
-         << setw(14) << "出库日期"
-         << setw(14) << "领用人"
-         << setw(14) << "经办人"
+         << setw(16) << "出库日期"
+         << setw(18) << "领用人"
+         << setw(18) << "经办人"
          << setw(20) << "备注" << endl;
     cout << string(140, '-') << endl;
 
@@ -718,13 +718,13 @@ void WarehouseManager::displayShortageRecordsUI() const {
     cout << "\n--- [缺库登记记录] ---" << endl;
     cout << left
          << setw(30) << "登记编号"
-         << setw(12) << "货物编号"
-         << setw(16) << "货物名称"
-         << setw(10) << "当前库存"
-         << setw(10) << "需求数量"
-         << setw(10) << "缺少数量"
-         << setw(14) << "登记日期"
-         << setw(12) << "状态"
+         << setw(20) << "货物编号"
+         << setw(20) << "货物名称"
+         << setw(14) << "当前库存"
+         << setw(14) << "需求数量"
+         << setw(14) << "缺少数量"
+         << setw(16) << "登记日期"
+         << setw(14) << "状态"
          << setw(20) << "备注" << endl;
     cout << string(134, '-') << endl;
 
