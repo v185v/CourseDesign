@@ -28,6 +28,8 @@ public:
     int getQuantity() const { return quantity; }
     Date getStorageDate() const { return storageDate; }
 
+
+    // Setters
     void setName(const std::string& value) { name = value; }
     void setManufacturer(const std::string& value) { manufacturer = value; }
     void setProductionDate(const Date& value) { productionDate = value; }

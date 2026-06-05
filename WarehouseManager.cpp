@@ -67,7 +67,7 @@ void WarehouseManager::loadFromFile() {
         stringstream ss(line);
         string id, name, mfg, pDateStr, priceStr, qtyStr, sDateStr;
 
-        // 🌟 核心技巧：用 getline 配合逗号 ',' 来切分字符串
+        //用 getline 配合逗号 ',' 来切分字符串
         getline(ss, id, ',');
         getline(ss, name, ',');
         getline(ss, mfg, ',');
@@ -99,7 +99,7 @@ void WarehouseManager::showMenu() const {
     cout << "=========================================" << endl;
     cout << "  1. 入库登记 (添加货物)" << endl;
     cout << "  2. 删除货物档案" << endl;
-    cout << "  3. 精确查询 (按编号查找)" << endl;
+    cout << "  3. 货物查询 (编号/名称/厂家/日期范围)" << endl;
     cout << "  4. 盘点库存 (显示所有货物)" << endl;
     cout << "  5. 货物排序 (按编号/单价/数量)" << endl;
     cout << "  6. 缺货报警 (筛查库存不足货物)" << endl;
@@ -462,12 +462,135 @@ void WarehouseManager::modifyGoodsUI() {
 }
 
 void WarehouseManager::queryGoodsUI() {
-    string targetId;
-    cout << "\n--- [精确查询] ---" << endl;
-    cout << "请输入要查询的货物编号: ";
-    cin >> targetId;
+    int choice;
 
-    inventory.searchById(targetId);
+    cout << "\n--- [货物查询] ---" << endl;
+    cout << "  1. 按编号精确查询" << endl;
+    cout << "  2. 按名称精确查询" << endl;
+    cout << "  3. 按名称模糊查询" << endl;
+    cout << "  4. 按厂家模糊查询" << endl;
+    cout << "  5. 按生产日期范围查询" << endl;
+    cout << "  6. 按入库日期范围查询" << endl;
+    cout << "请选择查询方式 (1-6): ";
+    cin >> choice;
+
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        cout << "输入无效，查询取消。" << endl;
+        return;
+    }
+
+    string keyword;
+    int startY, startM, startD;
+    int endY, endM, endD;
+    Date startDate;
+    Date endDate;
+    bool found = false;
+
+    auto printHeader = []() {
+        cout << string(80, '-') << endl;
+        cout << left << setw(10) << "编号"
+             << setw(15) << "名称"
+             << setw(15) << "厂家"
+             << setw(15) << "生产日期"
+             << setw(10) << "单价"
+             << setw(10) << "数量"
+             << setw(15) << "入库时间" << endl;
+        cout << string(80, '-') << endl;
+    };
+
+    auto inRange = [](const Date& value, const Date& start, const Date& end) {
+        int current = value.toNumber();
+        return current >= start.toNumber() && current <= end.toNumber();
+    };
+
+    switch (choice) {
+    case 1:
+        cout << "请输入货物编号: ";
+        cin >> keyword;
+        break;
+    case 2:
+        cout << "请输入货物名称: ";
+        cin >> keyword;
+        break;
+    case 3:
+        cout << "请输入货物名称关键字: ";
+        cin >> keyword;
+        break;
+    case 4:
+        cout << "请输入生产厂家关键字: ";
+        cin >> keyword;
+        break;
+    case 5:
+        cout << "请输入起始生产日期 (年 月 日): ";
+        cin >> startY >> startM >> startD;
+        cout << "请输入结束生产日期 (年 月 日): ";
+        cin >> endY >> endM >> endD;
+        startDate = Date(startY, startM, startD);
+        endDate = Date(endY, endM, endD);
+        break;
+    case 6:
+        cout << "请输入起始入库日期 (年 月 日): ";
+        cin >> startY >> startM >> startD;
+        cout << "请输入结束入库日期 (年 月 日): ";
+        cin >> endY >> endM >> endD;
+        startDate = Date(startY, startM, startD);
+        endDate = Date(endY, endM, endD);
+        break;
+    default:
+        cout << "查询方式无效，查询取消。" << endl;
+        return;
+    }
+
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        cout << "输入无效，查询取消。" << endl;
+        return;
+    }
+
+    printHeader();
+
+    Node* current = inventory.getHead();
+    while (current != nullptr) {
+        const Goods& goods = current->data;
+        bool matched = false;
+
+        switch (choice) {
+        case 1:
+            matched = (goods.getId() == keyword);
+            break;
+        case 2:
+            matched = (goods.getName() == keyword);
+            break;
+        case 3:
+            matched = (goods.getName().find(keyword) != string::npos);
+            break;
+        case 4:
+            matched = (goods.getManufacturer().find(keyword) != string::npos);
+            break;
+        case 5:
+            matched = inRange(goods.getProductionDate(), startDate, endDate);
+            break;
+        case 6:
+            matched = inRange(goods.getStorageDate(), startDate, endDate);
+            break;
+        }
+
+        if (matched) {
+            goods.display();
+            found = true;
+        }
+
+        current = current->next;
+    }
+
+    if (!found) {
+        cout << "未找到符合条件的货物信息。" << endl;
+    }
+
+    cout << string(80, '-') << endl;
 }
 
 void WarehouseManager::displayAllUI() const {

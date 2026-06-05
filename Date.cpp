@@ -17,3 +17,7 @@ Date Date::fromString(const std::string& str) {
     ss >> d.year >> dash >> d.month >> dash >> d.day;
     return d;
 }
+
+int Date::toNumber() const {
+    return year * 10000 + month * 100 + day;
+}
