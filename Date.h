@@ -13,11 +13,12 @@ public:
     
     // 将日期转换为字符串 (用于显示和保存到CSV)
     std::string toString() const;
+
+    // 将日期转换为一个整数，格式为 YYYYMMDD，便于比较和排序,例如 2026-6-5 转成 20260605
+    int toNumber() const;
     
     // 从字符串解析日期 (用于从CSV读取)
     static Date fromString(const std::string& str);
 
-    // 将日期转换为一个整数，格式为 YYYYMMDD，便于比较和排序,例如 2026-6-5 转成 20260605
-    int Date::toNumber() const ;
 };
 #endif // DATE_H

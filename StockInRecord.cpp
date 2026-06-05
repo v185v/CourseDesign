@@ -5,14 +5,14 @@
 
 StockInRecord::StockInRecord() : quantity(0), price(0) {}
 
-StockInRecord::StockInRecord(const std::string& recordId,
-                             const std::string& goodsId,
-                             const std::string& goodsName,
-                             int quantity,
-                             double price,
-                             const Date& inDate,
-                             const std::string& operatorName,
-                             const std::string& remark)
+StockInRecord::StockInRecord(const std::string& recordId,// 进货记录编号
+                             const std::string& goodsId,// 货物编号
+                             const std::string& goodsName,// 货物名称
+                             int quantity,// 进货数量
+                             double price,// 进货单价
+                             const Date& inDate,// 进货日期
+                             const std::string& operatorName,// 经办人
+                             const std::string& remark)// 备注
     : recordId(recordId),
       goodsId(goodsId),
       goodsName(goodsName),
