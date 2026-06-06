@@ -20,5 +20,6 @@ public:
     // 从字符串解析日期 (用于从CSV读取)
     static Date fromString(const std::string& str);
 
+    bool isValid() const;
 };
 #endif // DATE_H

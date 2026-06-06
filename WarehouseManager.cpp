@@ -164,6 +164,15 @@ void WarehouseManager::addGoodsUI() {
 
     cout << "\n--- [入库登记] ---" << endl;
     cout << "请输入货物编号: "; cin >> id;
+    if (id.empty()) {
+        cout << "货物编号不能为空，入库失败。" << endl;
+        return;
+    }
+
+    if (inventory.findById(id) != nullptr) {
+        cout << "货物编号已存在，不能重复添加，入库失败。" << endl;
+        return;
+    }
     cout << "请输入货物名称: "; cin >> name;
     cout << "请输入生产厂家: "; cin >> mfg;
     cout << "请输入单价: "; cin >> price;
@@ -172,31 +181,34 @@ void WarehouseManager::addGoodsUI() {
     cout << "请输入生产日期 (年 月 日，用空格隔开): ";
     cin >> y >> m >> d;
     Date pDate(y, m, d);
+        if (!pDate.isValid()) {
+        cout << "生产日期不合法，入库失败。" << endl;
+        return;
+    }
 
     cout << "请输入入库日期 (年 月 日，用空格隔开): ";
     cin >> sy >> sm >> sd;
     Date sDate(sy, sm, sd);
+        if (!sDate.isValid()) {
+        cout << "入库日期不合法，入库失败。" << endl;
+        return;
+    }
 
     cout << "请输入经办人: "; cin >> operatorName;
     cout << "请输入备注(无备注请输入 none): "; cin >> remark;
 
-    if (price < 0 || qty <= 0) {
-        cout << "单价不能为负，入库数量必须大于 0，入库失败。" << endl;
+    if (price < 0) {
+        cout << "货物单价不能为负，入库失败。" << endl;
         return;
     }
 
-    Goods* existingGoods = inventory.findById(id);
-    if (existingGoods != nullptr) {
-        existingGoods->setName(name);
-        existingGoods->setManufacturer(mfg);
-        existingGoods->setProductionDate(pDate);
-        existingGoods->setPrice(price);
-        existingGoods->setQuantity(existingGoods->getQuantity() + qty);
-        existingGoods->setStorageDate(sDate);
-    } else {
-        Goods newGoods(id, name, mfg, pDate, price, qty, sDate);
-        inventory.add(newGoods);
+    if (qty <= 0) {
+        cout << "入库数量必须大于 0，入库失败。" << endl;
+        return;
     }
+
+    Goods newGoods(id, name, mfg, pDate, price, qty, sDate);
+    inventory.add(newGoods);
 
     StockInRecord record(generateRecordId("IN"),
                          id,
@@ -219,6 +231,10 @@ void WarehouseManager::stockOutUI() {
     cout << "\n--- [出库登记] ---" << endl;
     cout << "请输入出库货物编号: ";
     cin >> targetId;
+    if (targetId.empty()) {
+        cout << "货物编号不能为空，出库失败。" << endl;
+        return;
+    }
 
     Goods* goods = inventory.findById(targetId);
     if (goods == nullptr) {
@@ -245,6 +261,10 @@ void WarehouseManager::stockOutUI() {
     cout << "请输入出库日期(年 月 日): ";
     cin >> y >> m >> d;
     Date outDate(y, m, d);
+    if (!outDate.isValid()) {
+        cout << "出库日期不合法，出库失败。" << endl;
+        return;
+    }
 
     cout << "请输入领用人/客户: "; cin >> receiver;
     cout << "请输入经办人: "; cin >> operatorName;
@@ -451,12 +471,34 @@ void WarehouseManager::modifyGoodsUI() {
     cout << "请输入新的入库时间(年 月 日): ";
     cin >> sy >> sm >> sd;
 
+    Date productionDate(py, pm, pd);
+    Date storageDate(sy, sm, sd);
+
+    if (!productionDate.isValid()) {
+        cout << "生产日期不合法，修改失败。" << endl;
+        return;
+    }
+
+    if (!storageDate.isValid()) {
+        cout << "入库日期不合法，修改失败。" << endl;
+        return;
+    }
+
+    if (price < 0) {
+        cout << "货物单价不能为负，修改失败。" << endl;
+        return;
+    }
+
+    if (qty < 0) {
+        cout << "货物数量不能为负，修改失败。" << endl;
+        return;
+    }
     goods->setName(name);
     goods->setManufacturer(mfg);
-    goods->setProductionDate(Date(py, pm, pd));
+    goods->setProductionDate(productionDate);
     goods->setPrice(price);
     goods->setQuantity(qty);
-    goods->setStorageDate(Date(sy, sm, sd));
+    goods->setStorageDate(storageDate);
 
     cout << "修改成功。" << endl;
 }
@@ -618,6 +660,10 @@ void WarehouseManager::shortageRegisterUI() {
 
     cout << "请输入需求数量或安全库存数量: ";
     cin >> requiredQty;
+    if (requiredQty <= 0) {
+        cout << "需求数量必须大于 0，缺库登记失败。" << endl;
+        return;
+    }
 
     if (requiredQty <= goods->getQuantity()) {
         cout << "当前库存未低于需求数量，无需登记缺库。" << endl;
@@ -626,10 +672,16 @@ void WarehouseManager::shortageRegisterUI() {
 
     cout << "请输入登记日期(年 月 日): ";
     cin >> y >> m >> d;
+    Date registerDate(y, m, d);
+    if (!registerDate.isValid()) {
+        cout << "登记日期不合法，缺库登记失败。" << endl;
+        return;
+    }
     cout << "请输入状态(如 未处理/已采购/已完成): ";
     cin >> status;
     cout << "请输入备注(无备注请输入 none): ";
     cin >> remark;
+    
 
     ShortageRecord record(generateRecordId("SHORT"),
                           goods->getId(),
@@ -637,7 +689,7 @@ void WarehouseManager::shortageRegisterUI() {
                           goods->getQuantity(),
                           requiredQty,
                           requiredQty - goods->getQuantity(),
-                          Date(y, m, d),
+                          registerDate,
                           status,
                           remark);
     saveShortageRecord(record);

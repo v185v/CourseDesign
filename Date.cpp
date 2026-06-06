@@ -21,3 +21,14 @@ Date Date::fromString(const std::string& str) {
 int Date::toNumber() const {
     return year * 10000 + month * 100 + day;
 }
+
+bool Date::isValid() const {
+    if (year < 1900 || year > 2100) return false;
+    if (month < 1 || month > 12) return false;
+
+    int days[] = {0,31,28,31,30,31,30,31,31,30,31,30,31};
+    bool leap = (year % 400 == 0) || (year % 4 == 0 && year % 100 != 0);
+    if (leap) days[2] = 29;
+
+    return day >= 1 && day <= days[month];
+}
