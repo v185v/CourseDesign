@@ -36,6 +36,7 @@ private:
     void removeGoodsUI();
     void queryGoodsUI();
     void displayAllUI() const;
+    void inventoryStatisticsUI() const;
     void modifyGoodsUI();
     void stockOutUI();
     void shortageRegisterUI();

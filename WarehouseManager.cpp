@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <ctime>
 #include <exception>
+#include <map>
 
 using namespace std;
 
@@ -100,7 +101,7 @@ void WarehouseManager::showMenu() const {
     cout << "  1. 入库登记 (添加货物)" << endl;
     cout << "  2. 删除货物档案" << endl;
     cout << "  3. 货物查询 (编号/名称/厂家/日期范围)" << endl;
-    cout << "  4. 盘点库存 (显示所有货物)" << endl;
+    cout << "  4. 库存盘点统计" << endl;
     cout << "  5. 货物排序 (按编号/单价/数量)" << endl;
     cout << "  6. 缺货报警 (筛查库存不足货物)" << endl;
     cout << "  7. 修改货物信息" << endl;
@@ -139,7 +140,7 @@ void WarehouseManager::run() {
         case 1: addGoodsUI(); break;
         case 2: removeGoodsUI(); break;
         case 3: queryGoodsUI(); break;
-        case 4: displayAllUI(); break;
+        case 4: inventoryStatisticsUI(); break;
         case 5: sortGoodsUI(); break;
         case 6: checkLowStockUI(); break;
         case 7: modifyGoodsUI(); break;
@@ -530,23 +531,6 @@ void WarehouseManager::queryGoodsUI() {
     Date endDate;
     bool found = false;
 
-    auto printHeader = []() {
-        cout << string(80, '-') << endl;
-        cout << left << setw(10) << "编号"
-             << setw(15) << "名称"
-             << setw(15) << "厂家"
-             << setw(15) << "生产日期"
-             << setw(10) << "单价"
-             << setw(10) << "数量"
-             << setw(15) << "入库时间" << endl;
-        cout << string(80, '-') << endl;
-    };
-
-    auto inRange = [](const Date& value, const Date& start, const Date& end) {
-        int current = value.toNumber();
-        return current >= start.toNumber() && current <= end.toNumber();
-    };
-
     switch (choice) {
     case 1:
         cout << "请输入货物编号: ";
@@ -592,7 +576,18 @@ void WarehouseManager::queryGoodsUI() {
         return;
     }
 
-    printHeader();
+    int startNumber = startDate.toNumber();
+    int endNumber = endDate.toNumber();
+
+    cout << string(80, '-') << endl;
+    cout << left << setw(10) << "编号"
+         << setw(15) << "名称"
+         << setw(15) << "厂家"
+         << setw(15) << "生产日期"
+         << setw(10) << "单价"
+         << setw(10) << "数量"
+         << setw(15) << "入库时间" << endl;
+    cout << string(80, '-') << endl;
 
     Node* current = inventory.getHead();
     while (current != nullptr) {
@@ -613,10 +608,12 @@ void WarehouseManager::queryGoodsUI() {
             matched = (goods.getManufacturer().find(keyword) != string::npos);
             break;
         case 5:
-            matched = inRange(goods.getProductionDate(), startDate, endDate);
+            matched = (goods.getProductionDate().toNumber() >= startNumber &&
+                       goods.getProductionDate().toNumber() <= endNumber);
             break;
         case 6:
-            matched = inRange(goods.getStorageDate(), startDate, endDate);
+            matched = (goods.getStorageDate().toNumber() >= startNumber &&
+                       goods.getStorageDate().toNumber() <= endNumber);
             break;
         }
 
@@ -638,6 +635,208 @@ void WarehouseManager::queryGoodsUI() {
 void WarehouseManager::displayAllUI() const {
     cout << "\n--- [当前库存清单] ---" << endl;
     inventory.displayAll(); // 调用链表的遍历打印
+}
+
+void WarehouseManager::inventoryStatisticsUI() const {
+    int choice = -1;
+
+    while (choice != 0) {
+        cout << "\n--- [库存盘点统计] ---" << endl;
+        cout << "  1. 显示所有库存清单" << endl;
+        cout << "  2. 库存总体统计" << endl;
+        cout << "  3. 按厂家统计" << endl;
+        cout << "  4. 按入库日期范围统计" << endl;
+        cout << "  5. 按生产日期范围统计" << endl;
+        cout << "  0. 返回主菜单" << endl;
+        cout << "请选择盘点方式 (0-5): ";
+        cin >> choice;
+
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(10000, '\n');
+            cout << "输入无效，请重新选择。" << endl;
+            continue;
+        }
+
+        if (choice != 0 && inventory.getHead() == nullptr) {
+            cout << "当前仓库为空，无法盘点。" << endl;
+            continue;
+        }
+
+        switch (choice) {
+        case 1:
+            displayAllUI();
+            break;
+        case 2: {
+            int kinds = 0;
+            int totalQuantity = 0;
+            double totalValue = 0;
+            const Goods* maxQuantityGoods = nullptr;
+            const Goods* minQuantityGoods = nullptr;
+            const Goods* maxValueGoods = nullptr;
+
+            Node* current = inventory.getHead();
+            while (current != nullptr) {
+                const Goods& goods = current->data;
+                double value = goods.getPrice() * goods.getQuantity();
+
+                kinds++;
+                totalQuantity += goods.getQuantity();
+                totalValue += value;
+
+                if (maxQuantityGoods == nullptr || goods.getQuantity() > maxQuantityGoods->getQuantity()) {
+                    maxQuantityGoods = &goods;
+                }
+                if (minQuantityGoods == nullptr || goods.getQuantity() < minQuantityGoods->getQuantity()) {
+                    minQuantityGoods = &goods;
+                }
+                if (maxValueGoods == nullptr || value > maxValueGoods->getPrice() * maxValueGoods->getQuantity()) {
+                    maxValueGoods = &goods;
+                }
+
+                current = current->next;
+            }
+
+            cout << "\n--- [库存总体统计] ---" << endl;
+            cout << fixed << setprecision(2);
+            cout << "货物种类数: " << kinds << endl;
+            cout << "库存总数量: " << totalQuantity << endl;
+            cout << "库存总金额: " << totalValue << endl;
+            cout << "平均单价: " << (totalQuantity == 0 ? 0 : totalValue / totalQuantity) << endl;
+
+            if (maxQuantityGoods != nullptr) {
+                cout << "库存数量最多: " << maxQuantityGoods->getName()
+                     << " (" << maxQuantityGoods->getQuantity() << ")" << endl;
+            }
+            if (minQuantityGoods != nullptr) {
+                cout << "库存数量最少: " << minQuantityGoods->getName()
+                     << " (" << minQuantityGoods->getQuantity() << ")" << endl;
+            }
+            if (maxValueGoods != nullptr) {
+                cout << "库存金额最高: " << maxValueGoods->getName()
+                     << " (" << maxValueGoods->getPrice() * maxValueGoods->getQuantity() << ")" << endl;
+            }
+            break;
+        }
+        case 3: {
+            struct Statistics {
+                int kinds;
+                int quantity;
+                double value;
+                Statistics() : kinds(0), quantity(0), value(0) {}
+            };
+
+            map<string, Statistics> statistics;
+            Node* current = inventory.getHead();
+            while (current != nullptr) {
+                const Goods& goods = current->data;
+                string manufacturer = goods.getManufacturer().empty() ? "未填写" : goods.getManufacturer();
+                Statistics& item = statistics[manufacturer];
+                item.kinds++;
+                item.quantity += goods.getQuantity();
+                item.value += goods.getPrice() * goods.getQuantity();
+                current = current->next;
+            }
+
+            cout << "\n--- [按厂家统计] ---" << endl;
+            cout << fixed << setprecision(2);
+            cout << string(70, '-') << endl;
+            cout << left << setw(20) << "厂家"
+                 << setw(12) << "种类数"
+                 << setw(14) << "库存数量"
+                 << setw(16) << "库存金额" << endl;
+            cout << string(70, '-') << endl;
+
+            map<string, Statistics>::const_iterator it;
+            for (it = statistics.begin(); it != statistics.end(); ++it) {
+                cout << left << setw(20) << it->first
+                     << setw(12) << it->second.kinds
+                     << setw(14) << it->second.quantity
+                     << setw(16) << it->second.value << endl;
+            }
+            cout << string(70, '-') << endl;
+            break;
+        }
+        case 4:
+        case 5: {
+            int startY, startM, startD;
+            int endY, endM, endD;
+            int kinds = 0;
+            int totalQuantity = 0;
+            double totalValue = 0;
+            bool found = false;
+            bool byStorageDate = (choice == 4);
+
+            cout << "请输入起始日期 (年 月 日): ";
+            cin >> startY >> startM >> startD;
+            cout << "请输入结束日期 (年 月 日): ";
+            cin >> endY >> endM >> endD;
+
+            if (cin.fail()) {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "日期输入无效，统计取消。" << endl;
+                break;
+            }
+
+            Date startDate(startY, startM, startD);
+            Date endDate(endY, endM, endD);
+
+            if (!startDate.isValid() || !endDate.isValid()) {
+                cout << "日期不合法，统计取消。" << endl;
+                break;
+            }
+
+            if (startDate.toNumber() > endDate.toNumber()) {
+                cout << "起始日期不能晚于结束日期，统计取消。" << endl;
+                break;
+            }
+
+            cout << (byStorageDate ? "\n--- [按入库日期范围统计] ---" : "\n--- [按生产日期范围统计] ---") << endl;
+            cout << string(80, '-') << endl;
+            cout << left << setw(10) << "编号"
+                 << setw(15) << "名称"
+                 << setw(15) << "厂家"
+                 << setw(15) << "生产日期"
+                 << setw(10) << "单价"
+                 << setw(10) << "数量"
+                 << setw(15) << "入库时间" << endl;
+            cout << string(80, '-') << endl;
+
+            Node* current = inventory.getHead();
+            while (current != nullptr) {
+                const Goods& goods = current->data;
+                Date targetDate = byStorageDate ? goods.getStorageDate() : goods.getProductionDate();
+
+                if (targetDate.toNumber() >= startDate.toNumber() &&
+                    targetDate.toNumber() <= endDate.toNumber()) {
+                    goods.display();
+                    kinds++;
+                    totalQuantity += goods.getQuantity();
+                    totalValue += goods.getPrice() * goods.getQuantity();
+                    found = true;
+                }
+
+                current = current->next;
+            }
+
+            if (!found) {
+                cout << "没有找到符合日期范围的货物。" << endl;
+            }
+
+            cout << string(80, '-') << endl;
+            cout << fixed << setprecision(2);
+            cout << "统计种类数: " << kinds << endl;
+            cout << "统计库存数量: " << totalQuantity << endl;
+            cout << "统计库存金额: " << totalValue << endl;
+            break;
+        }
+        case 0:
+            break;
+        default:
+            cout << "无效的盘点方式，请重新选择。" << endl;
+        }
+    }
 }
 
 void WarehouseManager::shortageRegisterUI() {
