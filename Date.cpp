@@ -11,10 +11,19 @@ std::string Date::toString() const {
 }
 
 Date Date::fromString(const std::string& str) {
-    Date d;
-    char dash; // 用于跳过 '-' 符号
+    Date d(0, 0, 0);
+    char dash1, dash2; // 用于校验 '-' 符号
     std::stringstream ss(str);
-    ss >> d.year >> dash >> d.month >> dash >> d.day;
+    if (!(ss >> d.year >> dash1 >> d.month >> dash2 >> d.day)) {
+        return Date(0, 0, 0);
+    }
+    if (dash1 != '-' || dash2 != '-') {
+        return Date(0, 0, 0);
+    }
+    ss >> std::ws;
+    if (!ss.eof()) {
+        return Date(0, 0, 0);
+    }
     return d;
 }
 

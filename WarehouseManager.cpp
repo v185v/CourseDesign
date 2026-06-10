@@ -7,9 +7,149 @@
 #include <iomanip>
 #include <ctime>
 #include <exception>
+#include <limits>
 #include <map>
 
 using namespace std;
+
+namespace {
+    void clearInputError() {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
+
+    vector<string> splitCsvFields(const string& line) {
+        vector<string> fields;
+        string field;
+        stringstream ss(line);
+        while (getline(ss, field, ',')) {
+            fields.push_back(field);
+        }
+        return fields;
+    }
+
+    bool hasCsvUnsafeChar(const string& value) {
+        return value.find_first_of(",\r\n") != string::npos;
+    }
+
+    bool readToken(const string& prompt, string& value, const string& fieldName, bool allowNone = false) {
+        cout << prompt;
+        if (!(cin >> value)) {
+            clearInputError();
+            cout << fieldName << "输入失败，请重新操作。" << endl;
+            return false;
+        }
+
+        if (value.empty() || (!allowNone && value == "none")) {
+            cout << fieldName << "不能为空。" << endl;
+            return false;
+        }
+
+        if (hasCsvUnsafeChar(value)) {
+            cout << fieldName << "不能包含逗号或换行符。" << endl;
+            return false;
+        }
+
+        return true;
+    }
+
+    bool readYesNo(const string& prompt, bool& value) {
+        string input;
+        if (!readToken(prompt, input, "选择")) {
+            return false;
+        }
+
+        if (input == "y" || input == "Y") {
+            value = true;
+            return true;
+        }
+
+        if (input == "n" || input == "N") {
+            value = false;
+            return true;
+        }
+
+        cout << "请选择 y 或 n。" << endl;
+        return false;
+    }
+
+    bool readIntMin(const string& prompt, int& value, int minValue, const string& fieldName) {
+        cout << prompt;
+        if (!(cin >> value)) {
+            clearInputError();
+            cout << fieldName << "必须是整数。" << endl;
+            return false;
+        }
+
+        if (value < minValue) {
+            cout << fieldName << "不能小于 " << minValue << "。" << endl;
+            return false;
+        }
+
+        return true;
+    }
+
+    bool readIntRange(const string& prompt, int& value, int minValue, int maxValue, const string& fieldName) {
+        if (!readIntMin(prompt, value, minValue, fieldName)) {
+            return false;
+        }
+
+        if (value > maxValue) {
+            cout << fieldName << "不能大于 " << maxValue << "。" << endl;
+            return false;
+        }
+
+        return true;
+    }
+
+    bool readDoubleMin(const string& prompt, double& value, double minValue, const string& fieldName) {
+        cout << prompt;
+        if (!(cin >> value)) {
+            clearInputError();
+            cout << fieldName << "必须是数字。" << endl;
+            return false;
+        }
+
+        if (value < minValue) {
+            cout << fieldName << "不能小于 " << minValue << "。" << endl;
+            return false;
+        }
+
+        return true;
+    }
+
+    bool readDateValue(const string& prompt, Date& date, const string& fieldName) {
+        int y, m, d;
+        cout << prompt;
+        if (!(cin >> y >> m >> d)) {
+            clearInputError();
+            cout << fieldName << "必须按 年 月 日 输入。" << endl;
+            return false;
+        }
+
+        date = Date(y, m, d);
+        if (!date.isValid()) {
+            cout << fieldName << "不合法。" << endl;
+            return false;
+        }
+
+        return true;
+    }
+
+    bool validateDateRange(const Date& startDate, const Date& endDate) {
+        if (!startDate.isValid() || !endDate.isValid()) {
+            cout << "日期范围不合法。" << endl;
+            return false;
+        }
+
+        if (startDate.toNumber() > endDate.toNumber()) {
+            cout << "起始日期不能晚于结束日期。" << endl;
+            return false;
+        }
+
+        return true;
+    }
+}
 
 // --- 1. 构造函数与析构函数的修改 ---
 
@@ -52,7 +192,7 @@ void WarehouseManager::saveToFile() const {
 
 void WarehouseManager::loadFromFile() {
     ifstream file(dataFile);
-    
+
     if (!file.is_open()) {
         cout << ">>> 未找到本地数据文件，系统将作为一个空仓库启动。" << endl;
         return;
@@ -60,33 +200,60 @@ void WarehouseManager::loadFromFile() {
 
     string line;
     int count = 0; // 记录加载了多少条数据
-    
+    int lineNumber = 0;
+
     // 一行一行地读取文件，直到读完
     while (getline(file, line)) {
+        lineNumber++;
         if (line.empty()) continue; // 跳过空行
 
-        stringstream ss(line);
-        string id, name, mfg, pDateStr, priceStr, qtyStr, sDateStr;
+        try {
+            vector<string> fields = splitCsvFields(line);
+            if (fields.size() != 7) {
+                cout << "跳过第 " << lineNumber << " 行：字段数量不正确。" << endl;
+                continue;
+            }
 
-        //用 getline 配合逗号 ',' 来切分字符串
-        getline(ss, id, ',');
-        getline(ss, name, ',');
-        getline(ss, mfg, ',');
-        getline(ss, pDateStr, ',');
-        getline(ss, priceStr, ',');
-        getline(ss, qtyStr, ',');
-        getline(ss, sDateStr, ',');
+            string id = fields[0];
+            string name = fields[1];
+            string mfg = fields[2];
+            Date pDate = Date::fromString(fields[3]);
+            double price = stod(fields[4]);
+            int qty = stoi(fields[5]);
+            Date sDate = Date::fromString(fields[6]);
 
-        // 恢复数据类型：文本转为数字和 Date 对象
-        double price = stod(priceStr); // string to double
-        int qty = stoi(qtyStr);        // string to integer
-        Date pDate = Date::fromString(pDateStr);
-        Date sDate = Date::fromString(sDateStr);
+            if (id.empty() || name.empty() || mfg.empty()) {
+                cout << "跳过第 " << lineNumber << " 行：基础字段不能为空。" << endl;
+                continue;
+            }
 
-        // 组装成货物对象，重新添加回链表中
-        Goods g(id, name, mfg, pDate, price, qty, sDate);
-        inventory.add(g);
-        count++;
+            if (inventory.findById(id) != nullptr) {
+                cout << "跳过第 " << lineNumber << " 行：货物编号重复。" << endl;
+                continue;
+            }
+
+            if (!pDate.isValid() || !sDate.isValid()) {
+                cout << "跳过第 " << lineNumber << " 行：日期不合法。" << endl;
+                continue;
+            }
+
+            if (pDate.toNumber() > sDate.toNumber()) {
+                cout << "跳过第 " << lineNumber << " 行：生产日期晚于入库日期。" << endl;
+                continue;
+            }
+
+            if (price < 0 || qty < 0) {
+                cout << "跳过第 " << lineNumber << " 行：单价或数量不能为负。" << endl;
+                continue;
+            }
+
+            // 组装成货物对象，重新添加回链表中
+            Goods g(id, name, mfg, pDate, price, qty, sDate);
+            inventory.add(g);
+            count++;
+        } catch (const exception&) {
+            cout << "跳过第 " << lineNumber << " 行：无法解析数据。" << endl;
+        }
     }
 
     file.close();
@@ -121,18 +288,7 @@ void WarehouseManager::run() {
     // 核心引擎：只要不输入 0，就一直循环
     while (choice != 0) {
         showMenu();
-        cin >> choice;
-
-        // 检查输入流是否崩溃
-        if (cin.fail()) {
-            // 清除 cin 的错误状态
-            cin.clear(); 
-            
-            // 忽略（丢弃）缓冲区里的多余字符，直到遇到换行符 '\n'
-            // 最多丢弃 10000 个字符
-            cin.ignore(10000, '\n'); 
-            
-            cout << "❌ 检测到非法输入（数字过大或包含字母），请重新输入有效选项！" << endl;
+        if (!readIntRange("", choice, 0, 12, "菜单选项")) {
             continue;
         }
 
@@ -160,53 +316,31 @@ void WarehouseManager::addGoodsUI() {
     string id, name, mfg, operatorName, remark;
     double price;
     int qty;
-    int y, m, d;
-    int sy, sm, sd;
+    Date pDate;
+    Date sDate;
 
     cout << "\n--- [入库登记] ---" << endl;
-    cout << "请输入货物编号: "; cin >> id;
-    if (id.empty()) {
-        cout << "货物编号不能为空，入库失败。" << endl;
-        return;
-    }
+    if (!readToken("请输入货物编号: ", id, "货物编号")) return;
 
     if (inventory.findById(id) != nullptr) {
         cout << "货物编号已存在，不能重复添加，入库失败。" << endl;
         return;
     }
-    cout << "请输入货物名称: "; cin >> name;
-    cout << "请输入生产厂家: "; cin >> mfg;
-    cout << "请输入单价: "; cin >> price;
-    cout << "请输入入库数量: "; cin >> qty;
 
-    cout << "请输入生产日期 (年 月 日，用空格隔开): ";
-    cin >> y >> m >> d;
-    Date pDate(y, m, d);
-        if (!pDate.isValid()) {
-        cout << "生产日期不合法，入库失败。" << endl;
+    if (!readToken("请输入货物名称: ", name, "货物名称")) return;
+    if (!readToken("请输入生产厂家: ", mfg, "生产厂家")) return;
+    if (!readDoubleMin("请输入单价: ", price, 0, "货物单价")) return;
+    if (!readIntMin("请输入入库数量: ", qty, 1, "入库数量")) return;
+    if (!readDateValue("请输入生产日期 (年 月 日，用空格隔开): ", pDate, "生产日期")) return;
+    if (!readDateValue("请输入入库日期 (年 月 日，用空格隔开): ", sDate, "入库日期")) return;
+
+    if (pDate.toNumber() > sDate.toNumber()) {
+        cout << "生产日期不能晚于入库日期，入库失败。" << endl;
         return;
     }
 
-    cout << "请输入入库日期 (年 月 日，用空格隔开): ";
-    cin >> sy >> sm >> sd;
-    Date sDate(sy, sm, sd);
-        if (!sDate.isValid()) {
-        cout << "入库日期不合法，入库失败。" << endl;
-        return;
-    }
-
-    cout << "请输入经办人: "; cin >> operatorName;
-    cout << "请输入备注(无备注请输入 none): "; cin >> remark;
-
-    if (price < 0) {
-        cout << "货物单价不能为负，入库失败。" << endl;
-        return;
-    }
-
-    if (qty <= 0) {
-        cout << "入库数量必须大于 0，入库失败。" << endl;
-        return;
-    }
+    if (!readToken("请输入经办人: ", operatorName, "经办人")) return;
+    if (!readToken("请输入备注(无备注请输入 none): ", remark, "备注", true)) return;
 
     Goods newGoods(id, name, mfg, pDate, price, qty, sDate);
     inventory.add(newGoods);
@@ -227,15 +361,10 @@ void WarehouseManager::addGoodsUI() {
 void WarehouseManager::stockOutUI() {
     string targetId, receiver, operatorName, remark;
     int outQty;
-    int y, m, d;
+    Date outDate;
 
     cout << "\n--- [出库登记] ---" << endl;
-    cout << "请输入出库货物编号: ";
-    cin >> targetId;
-    if (targetId.empty()) {
-        cout << "货物编号不能为空，出库失败。" << endl;
-        return;
-    }
+    if (!readToken("请输入出库货物编号: ", targetId, "货物编号")) return;
 
     Goods* goods = inventory.findById(targetId);
     if (goods == nullptr) {
@@ -246,30 +375,22 @@ void WarehouseManager::stockOutUI() {
     cout << "当前货物信息:" << endl;
     goods->display();
 
-    cout << "请输入出库数量: ";
-    cin >> outQty;
-
-    if (outQty <= 0) {
-        cout << "出库数量必须大于 0。" << endl;
-        return;
-    }
+    if (!readIntMin("请输入出库数量: ", outQty, 1, "出库数量")) return;
 
     if (outQty > goods->getQuantity()) {
         cout << "库存不足，当前库存为 " << goods->getQuantity() << "，出库失败。" << endl;
         return;
     }
 
-    cout << "请输入出库日期(年 月 日): ";
-    cin >> y >> m >> d;
-    Date outDate(y, m, d);
-    if (!outDate.isValid()) {
-        cout << "出库日期不合法，出库失败。" << endl;
+    if (!readDateValue("请输入出库日期(年 月 日): ", outDate, "出库日期")) return;
+    if (outDate.toNumber() < goods->getStorageDate().toNumber()) {
+        cout << "出库日期不能早于入库日期，出库失败。" << endl;
         return;
     }
 
-    cout << "请输入领用人/客户: "; cin >> receiver;
-    cout << "请输入经办人: "; cin >> operatorName;
-    cout << "请输入备注(无备注请输入 none): "; cin >> remark;
+    if (!readToken("请输入领用人/客户: ", receiver, "领用人/客户")) return;
+    if (!readToken("请输入经办人: ", operatorName, "经办人")) return;
+    if (!readToken("请输入备注(无备注请输入 none): ", remark, "备注", true)) return;
 
     goods->setQuantity(goods->getQuantity() - outQty);
     StockOutRecord record(generateRecordId("OUT"),
@@ -289,8 +410,7 @@ void WarehouseManager::stockOutUI() {
 void WarehouseManager::removeGoodsUI() {
     string targetId;
     cout << "\n--- [出库/删除] ---" << endl;
-    cout << "请输入要删除的货物编号: ";
-    cin >> targetId;
+    if (!readToken("请输入要删除的货物编号: ", targetId, "货物编号")) return;
 
     inventory.removeById(targetId);
 }
@@ -341,54 +461,55 @@ void WarehouseManager::sortGoodsUI() const {
     cout << "请选择排序字段 (1-3): ";
     
     int type;
-    cin >> type;
-
-    if (type >= 1 && type <= 3) {
-        cout << "  1. 升序 (从小到大)" << endl;
-        cout << "  2. 降序 (从大到小)" << endl;
-        cout << "请选择排序方向 (1-2): ";
-        int orderChoice;
-        cin >> orderChoice;
-        
-        // 如果用户输入1，isAscending 为 true，否则为 false
-        bool isAscending = (orderChoice == 1); 
-
-        cout << ">>> 正在生成高速排序视图..." << endl;
-
-        int size = 0;
-        Node* current = inventory.getHead();
-        while (current != nullptr) {
-            size++;
-            current = current->next;
-        }
-
-        if (size == 0) {
-            cout << "❌ 仓库为空，无法排序！" << endl;
-            return;
-        }
-
-        const Goods** viewArray = new const Goods*[size];
-
-        current = inventory.getHead();
-        for (int i = 0; i < size; i++) {
-            viewArray[i] = &(current->data);
-            current = current->next;
-        }
-
-        quickSort(viewArray, 0, size - 1, type, isAscending);
-
-        cout << "\n✅ 排序完成" << endl;
-        cout << string(80, '-') << endl;
-        for (int i = 0; i < size; i++) {
-            viewArray[i]->display();
-        }
-        cout << string(80, '-') << endl;
-
-        delete[] viewArray; 
-
-    } else {
+    if (!readIntRange("", type, 1, 3, "排序字段")) {
         cout << "❌ 选择无效，取消排序操作。" << endl;
+        return;
     }
+
+    cout << "  1. 升序 (从小到大)" << endl;
+    cout << "  2. 降序 (从大到小)" << endl;
+    cout << "请选择排序方向 (1-2): ";
+    int orderChoice;
+    if (!readIntRange("", orderChoice, 1, 2, "排序方向")) {
+        cout << "❌ 选择无效，取消排序操作。" << endl;
+        return;
+    }
+
+    // 如果用户输入1，isAscending 为 true，否则为 false
+    bool isAscending = (orderChoice == 1);
+
+    cout << ">>> 正在生成高速排序视图..." << endl;
+
+    int size = 0;
+    Node* current = inventory.getHead();
+    while (current != nullptr) {
+        size++;
+        current = current->next;
+    }
+
+    if (size == 0) {
+        cout << "❌ 仓库为空，无法排序！" << endl;
+        return;
+    }
+
+    const Goods** viewArray = new const Goods*[size];
+
+    current = inventory.getHead();
+    for (int i = 0; i < size; i++) {
+        viewArray[i] = &(current->data);
+        current = current->next;
+    }
+
+    quickSort(viewArray, 0, size - 1, type, isAscending);
+
+    cout << "\n✅ 排序完成" << endl;
+    cout << string(80, '-') << endl;
+    for (int i = 0; i < size; i++) {
+        viewArray[i]->display();
+    }
+    cout << string(80, '-') << endl;
+
+    delete[] viewArray;
 }
 
 void WarehouseManager::checkLowStockUI() {
@@ -396,7 +517,7 @@ void WarehouseManager::checkLowStockUI() {
     cout << "请输入库存安全阈值 (低于该值的货物将被列出): ";
     
     int threshold;
-    cin >> threshold;
+    if (!readIntMin("", threshold, 0, "库存安全阈值")) return;
 
     cout << ">>> 正在筛查库存低于 " << threshold << " 的货物..." << endl;
 
@@ -428,10 +549,8 @@ void WarehouseManager::checkLowStockUI() {
     cout << string(80, '-') << endl;
 
     if (found) {
-        char choice;
-        cout << "是否需要登记缺库记录？(y/n): ";
-        cin >> choice;
-        if (choice == 'y' || choice == 'Y') {
+        bool shouldRegister = false;
+        if (readYesNo("是否需要登记缺库记录？(y/n): ", shouldRegister) && shouldRegister) {
             shortageRegisterUI();
         }
     }
@@ -440,8 +559,7 @@ void WarehouseManager::checkLowStockUI() {
 void WarehouseManager::modifyGoodsUI() {
     string targetId;
     cout << "\n--- [修改货物信息] ---" << endl;
-    cout << "请输入要修改的货物编号: ";
-    cin >> targetId;
+    if (!readToken("请输入要修改的货物编号: ", targetId, "货物编号")) return;
 
     Goods* goods = inventory.findById(targetId);
 
@@ -456,44 +574,21 @@ void WarehouseManager::modifyGoodsUI() {
     string name, mfg;
     double price;
     int qty;
-    int py, pm, pd;
-    int sy, sm, sd;
+    Date productionDate;
+    Date storageDate;
 
-    cout << "请输入新的货物名称: ";
-    cin >> name;
-    cout << "请输入新的生产厂家: ";
-    cin >> mfg;
-    cout << "请输入新的生产日期(年 月 日): ";
-    cin >> py >> pm >> pd;
-    cout << "请输入新的单价: ";
-    cin >> price;
-    cout << "请输入新的数量: ";
-    cin >> qty;
-    cout << "请输入新的入库时间(年 月 日): ";
-    cin >> sy >> sm >> sd;
+    if (!readToken("请输入新的货物名称: ", name, "货物名称")) return;
+    if (!readToken("请输入新的生产厂家: ", mfg, "生产厂家")) return;
+    if (!readDateValue("请输入新的生产日期(年 月 日): ", productionDate, "生产日期")) return;
+    if (!readDoubleMin("请输入新的单价: ", price, 0, "货物单价")) return;
+    if (!readIntMin("请输入新的数量: ", qty, 0, "货物数量")) return;
+    if (!readDateValue("请输入新的入库时间(年 月 日): ", storageDate, "入库日期")) return;
 
-    Date productionDate(py, pm, pd);
-    Date storageDate(sy, sm, sd);
-
-    if (!productionDate.isValid()) {
-        cout << "生产日期不合法，修改失败。" << endl;
+    if (productionDate.toNumber() > storageDate.toNumber()) {
+        cout << "生产日期不能晚于入库日期，修改失败。" << endl;
         return;
     }
 
-    if (!storageDate.isValid()) {
-        cout << "入库日期不合法，修改失败。" << endl;
-        return;
-    }
-
-    if (price < 0) {
-        cout << "货物单价不能为负，修改失败。" << endl;
-        return;
-    }
-
-    if (qty < 0) {
-        cout << "货物数量不能为负，修改失败。" << endl;
-        return;
-    }
     goods->setName(name);
     goods->setManufacturer(mfg);
     goods->setProductionDate(productionDate);
@@ -515,64 +610,38 @@ void WarehouseManager::queryGoodsUI() {
     cout << "  5. 按生产日期范围查询" << endl;
     cout << "  6. 按入库日期范围查询" << endl;
     cout << "请选择查询方式 (1-6): ";
-    cin >> choice;
-
-    if (cin.fail()) {
-        cin.clear();
-        cin.ignore(10000, '\n');
-        cout << "输入无效，查询取消。" << endl;
-        return;
-    }
+    if (!readIntRange("", choice, 1, 6, "查询方式")) return;
 
     string keyword;
-    int startY, startM, startD;
-    int endY, endM, endD;
     Date startDate;
     Date endDate;
     bool found = false;
 
     switch (choice) {
     case 1:
-        cout << "请输入货物编号: ";
-        cin >> keyword;
+        if (!readToken("请输入货物编号: ", keyword, "货物编号")) return;
         break;
     case 2:
-        cout << "请输入货物名称: ";
-        cin >> keyword;
+        if (!readToken("请输入货物名称: ", keyword, "货物名称")) return;
         break;
     case 3:
-        cout << "请输入货物名称关键字: ";
-        cin >> keyword;
+        if (!readToken("请输入货物名称关键字: ", keyword, "货物名称关键字")) return;
         break;
     case 4:
-        cout << "请输入生产厂家关键字: ";
-        cin >> keyword;
+        if (!readToken("请输入生产厂家关键字: ", keyword, "生产厂家关键字")) return;
         break;
     case 5:
-        cout << "请输入起始生产日期 (年 月 日): ";
-        cin >> startY >> startM >> startD;
-        cout << "请输入结束生产日期 (年 月 日): ";
-        cin >> endY >> endM >> endD;
-        startDate = Date(startY, startM, startD);
-        endDate = Date(endY, endM, endD);
+        if (!readDateValue("请输入起始生产日期 (年 月 日): ", startDate, "起始生产日期")) return;
+        if (!readDateValue("请输入结束生产日期 (年 月 日): ", endDate, "结束生产日期")) return;
+        if (!validateDateRange(startDate, endDate)) return;
         break;
     case 6:
-        cout << "请输入起始入库日期 (年 月 日): ";
-        cin >> startY >> startM >> startD;
-        cout << "请输入结束入库日期 (年 月 日): ";
-        cin >> endY >> endM >> endD;
-        startDate = Date(startY, startM, startD);
-        endDate = Date(endY, endM, endD);
+        if (!readDateValue("请输入起始入库日期 (年 月 日): ", startDate, "起始入库日期")) return;
+        if (!readDateValue("请输入结束入库日期 (年 月 日): ", endDate, "结束入库日期")) return;
+        if (!validateDateRange(startDate, endDate)) return;
         break;
     default:
         cout << "查询方式无效，查询取消。" << endl;
-        return;
-    }
-
-    if (cin.fail()) {
-        cin.clear();
-        cin.ignore(10000, '\n');
-        cout << "输入无效，查询取消。" << endl;
         return;
     }
 
@@ -649,12 +718,7 @@ void WarehouseManager::inventoryStatisticsUI() const {
         cout << "  5. 按生产日期范围统计" << endl;
         cout << "  0. 返回主菜单" << endl;
         cout << "请选择盘点方式 (0-5): ";
-        cin >> choice;
-
-        if (cin.fail()) {
-            cin.clear();
-            cin.ignore(10000, '\n');
-            cout << "输入无效，请重新选择。" << endl;
+        if (!readIntRange("", choice, 0, 5, "盘点方式")) {
             continue;
         }
 
@@ -759,38 +823,17 @@ void WarehouseManager::inventoryStatisticsUI() const {
         }
         case 4:
         case 5: {
-            int startY, startM, startD;
-            int endY, endM, endD;
             int kinds = 0;
             int totalQuantity = 0;
             double totalValue = 0;
             bool found = false;
             bool byStorageDate = (choice == 4);
+            Date startDate;
+            Date endDate;
 
-            cout << "请输入起始日期 (年 月 日): ";
-            cin >> startY >> startM >> startD;
-            cout << "请输入结束日期 (年 月 日): ";
-            cin >> endY >> endM >> endD;
-
-            if (cin.fail()) {
-                cin.clear();
-                cin.ignore(10000, '\n');
-                cout << "日期输入无效，统计取消。" << endl;
-                break;
-            }
-
-            Date startDate(startY, startM, startD);
-            Date endDate(endY, endM, endD);
-
-            if (!startDate.isValid() || !endDate.isValid()) {
-                cout << "日期不合法，统计取消。" << endl;
-                break;
-            }
-
-            if (startDate.toNumber() > endDate.toNumber()) {
-                cout << "起始日期不能晚于结束日期，统计取消。" << endl;
-                break;
-            }
+            if (!readDateValue("请输入起始日期 (年 月 日): ", startDate, "起始日期")) break;
+            if (!readDateValue("请输入结束日期 (年 月 日): ", endDate, "结束日期")) break;
+            if (!validateDateRange(startDate, endDate)) break;
 
             cout << (byStorageDate ? "\n--- [按入库日期范围统计] ---" : "\n--- [按生产日期范围统计] ---") << endl;
             cout << string(80, '-') << endl;
@@ -842,11 +885,10 @@ void WarehouseManager::inventoryStatisticsUI() const {
 void WarehouseManager::shortageRegisterUI() {
     string targetId, status, remark;
     int requiredQty;
-    int y, m, d;
+    Date registerDate;
 
     cout << "\n--- [缺库登记] ---" << endl;
-    cout << "请输入缺库货物编号: ";
-    cin >> targetId;
+    if (!readToken("请输入缺库货物编号: ", targetId, "货物编号")) return;
 
     Goods* goods = inventory.findById(targetId);
     if (goods == nullptr) {
@@ -857,29 +899,16 @@ void WarehouseManager::shortageRegisterUI() {
     cout << "当前货物信息:" << endl;
     goods->display();
 
-    cout << "请输入需求数量或安全库存数量: ";
-    cin >> requiredQty;
-    if (requiredQty <= 0) {
-        cout << "需求数量必须大于 0，缺库登记失败。" << endl;
-        return;
-    }
+    if (!readIntMin("请输入需求数量或安全库存数量: ", requiredQty, 1, "需求数量")) return;
 
     if (requiredQty <= goods->getQuantity()) {
         cout << "当前库存未低于需求数量，无需登记缺库。" << endl;
         return;
     }
 
-    cout << "请输入登记日期(年 月 日): ";
-    cin >> y >> m >> d;
-    Date registerDate(y, m, d);
-    if (!registerDate.isValid()) {
-        cout << "登记日期不合法，缺库登记失败。" << endl;
-        return;
-    }
-    cout << "请输入状态(如 未处理/已采购/已完成): ";
-    cin >> status;
-    cout << "请输入备注(无备注请输入 none): ";
-    cin >> remark;
+    if (!readDateValue("请输入登记日期(年 月 日): ", registerDate, "登记日期")) return;
+    if (!readToken("请输入状态(如 未处理/已采购/已完成): ", status, "状态")) return;
+    if (!readToken("请输入备注(无备注请输入 none): ", remark, "备注", true)) return;
     
 
     ShortageRecord record(generateRecordId("SHORT"),

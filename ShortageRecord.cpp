@@ -1,7 +1,51 @@
 #include "ShortageRecord.h"
 #include <iomanip>
 #include <iostream>
+#include <stdexcept>
 #include <sstream>
+#include <vector>
+
+namespace {
+    std::vector<std::string> splitCsvFields(const std::string& line) {
+        std::vector<std::string> fields;
+        std::string field;
+        std::stringstream ss(line);
+        while (getline(ss, field, ',')) {
+            fields.push_back(field);
+        }
+        return fields;
+    }
+
+    void requireNonEmpty(const std::string& value, const std::string& fieldName) {
+        if (value.empty()) {
+            throw std::invalid_argument(fieldName + " cannot be empty");
+        }
+    }
+
+    int parseNonNegativeInt(const std::string& value, const std::string& fieldName) {
+        int result = std::stoi(value);
+        if (result < 0) {
+            throw std::invalid_argument(fieldName + " cannot be negative");
+        }
+        return result;
+    }
+
+    int parsePositiveInt(const std::string& value, const std::string& fieldName) {
+        int result = std::stoi(value);
+        if (result <= 0) {
+            throw std::invalid_argument(fieldName + " must be positive");
+        }
+        return result;
+    }
+
+    Date parseValidDate(const std::string& value, const std::string& fieldName) {
+        Date date = Date::fromString(value);
+        if (!date.isValid()) {
+            throw std::invalid_argument(fieldName + " is invalid");
+        }
+        return date;
+    }
+}
 
 ShortageRecord::ShortageRecord()
     : currentQuantity(0), requiredQuantity(0), shortageQuantity(0) {}
@@ -34,30 +78,34 @@ std::string ShortageRecord::toCSV() const {
 }
 
 ShortageRecord ShortageRecord::fromCSV(const std::string& line) {
-    std::stringstream ss(line);
-    std::string recordId, goodsId, goodsName, currentQuantityStr;
-    std::string requiredQuantityStr, shortageQuantityStr, registerDateStr;
-    std::string status, remark;
+    std::vector<std::string> fields = splitCsvFields(line);
+    if (fields.size() != 9) {
+        throw std::invalid_argument("invalid shortage csv field count");
+    }
 
-    getline(ss, recordId, ',');
-    getline(ss, goodsId, ',');
-    getline(ss, goodsName, ',');
-    getline(ss, currentQuantityStr, ',');
-    getline(ss, requiredQuantityStr, ',');
-    getline(ss, shortageQuantityStr, ',');
-    getline(ss, registerDateStr, ',');
-    getline(ss, status, ',');
-    getline(ss, remark);
+    requireNonEmpty(fields[0], "recordId");
+    requireNonEmpty(fields[1], "goodsId");
+    requireNonEmpty(fields[2], "goodsName");
+    requireNonEmpty(fields[7], "status");
 
-    return ShortageRecord(recordId,
-                          goodsId,
-                          goodsName,
-                          std::stoi(currentQuantityStr),
-                          std::stoi(requiredQuantityStr),
-                          std::stoi(shortageQuantityStr),
-                          Date::fromString(registerDateStr),
-                          status,
-                          remark);
+    int currentQuantity = parseNonNegativeInt(fields[3], "currentQuantity");
+    int requiredQuantity = parsePositiveInt(fields[4], "requiredQuantity");
+    int shortageQuantity = parsePositiveInt(fields[5], "shortageQuantity");
+    Date registerDate = parseValidDate(fields[6], "registerDate");
+
+    if (shortageQuantity != requiredQuantity - currentQuantity) {
+        throw std::invalid_argument("shortageQuantity does not match requiredQuantity - currentQuantity");
+    }
+
+    return ShortageRecord(fields[0],
+                          fields[1],
+                          fields[2],
+                          currentQuantity,
+                          requiredQuantity,
+                          shortageQuantity,
+                          registerDate,
+                          fields[7],
+                          fields[8]);
 }
 
 void ShortageRecord::display() const {
