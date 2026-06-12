@@ -1,51 +1,9 @@
 #include "StockInRecord.h"
+#include "InputValidator.h"
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
-#include <sstream>
 #include <vector>
-
-namespace {
-    std::vector<std::string> splitCsvFields(const std::string& line) {
-        std::vector<std::string> fields;
-        std::string field;
-        std::stringstream ss(line);
-        while (getline(ss, field, ',')) {
-            fields.push_back(field);
-        }
-        return fields;
-    }
-
-    void requireNonEmpty(const std::string& value, const std::string& fieldName) {
-        if (value.empty()) {
-            throw std::invalid_argument(fieldName + " cannot be empty");
-        }
-    }
-
-    int parsePositiveInt(const std::string& value, const std::string& fieldName) {
-        int result = std::stoi(value);
-        if (result <= 0) {
-            throw std::invalid_argument(fieldName + " must be positive");
-        }
-        return result;
-    }
-
-    double parseNonNegativeDouble(const std::string& value, const std::string& fieldName) {
-        double result = std::stod(value);
-        if (result < 0) {
-            throw std::invalid_argument(fieldName + " cannot be negative");
-        }
-        return result;
-    }
-
-    Date parseValidDate(const std::string& value, const std::string& fieldName) {
-        Date date = Date::fromString(value);
-        if (!date.isValid()) {
-            throw std::invalid_argument(fieldName + " is invalid");
-        }
-        return date;
-    }
-}
 
 StockInRecord::StockInRecord() : quantity(0), price(0) {}
 
@@ -73,19 +31,19 @@ std::string StockInRecord::toCSV() const {
 }
 
 StockInRecord StockInRecord::fromCSV(const std::string& line) {
-    std::vector<std::string> fields = splitCsvFields(line);
+    std::vector<std::string> fields = InputValidator::splitCsvFields(line);
     if (fields.size() != 8) {
         throw std::invalid_argument("invalid stock-in csv field count");
     }
 
-    requireNonEmpty(fields[0], "recordId");
-    requireNonEmpty(fields[1], "goodsId");
-    requireNonEmpty(fields[2], "goodsName");
-    requireNonEmpty(fields[6], "operatorName");
+    InputValidator::requireNonEmpty(fields[0], "recordId");
+    InputValidator::requireNonEmpty(fields[1], "goodsId");
+    InputValidator::requireNonEmpty(fields[2], "goodsName");
+    InputValidator::requireNonEmpty(fields[6], "operatorName");
 
-    int quantity = parsePositiveInt(fields[3], "quantity");
-    double price = parseNonNegativeDouble(fields[4], "price");
-    Date inDate = parseValidDate(fields[5], "inDate");
+    int quantity = InputValidator::parsePositiveInt(fields[3], "quantity");
+    double price = InputValidator::parseNonNegativeDouble(fields[4], "price");
+    Date inDate = InputValidator::parseValidDate(fields[5], "inDate");
 
     return StockInRecord(fields[0],
                          fields[1],
