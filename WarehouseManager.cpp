@@ -145,7 +145,6 @@ void WarehouseManager::showMenu() const {
 void WarehouseManager::run() {
     int choice = -1;
 
-    // 核心引擎：只要不输入 0，就一直循环
     while (choice != 0) {
         showMenu();
         if (!InputValidator::readIntRange("", choice, 0, 12, "菜单选项")) {
